@@ -2,6 +2,27 @@ body.only-tabs-hide-native .workspace-tabs .workspace-tab-header:not(.is-active)
 	display: none;
 }
 
+body.only-tabs-layout-card .only-tabs-list {
+	gap: 6px;
+	padding: 8px;
+}
+
+body.only-tabs-layout-card .only-tabs-item {
+	align-items: start;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+	grid-template-columns: 20px minmax(0, 1fr) 22px;
+	min-height: 46px;
+	padding: 8px;
+}
+
+body.only-tabs-layout-card .only-tabs-title {
+	font-size: var(--font-ui-medium);
+	line-height: 1.35;
+	white-space: normal;
+}
+
 .only-tabs-root {
 	display: flex;
 	flex-direction: column;

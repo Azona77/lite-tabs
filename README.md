@@ -9,5 +9,6 @@ A lightweight Obsidian plugin that replaces the native single-line tab strip wit
 - Click to activate a tab.
 - Middle click to close a tab.
 - Active tab highlighting.
-- Same-group drag sorting.
+- Same-group and cross-group drag sorting.
 - Optional native tab strip hiding.
+- List and card presentation styles.

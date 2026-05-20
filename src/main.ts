@@ -78,6 +78,14 @@ export default class OnlyTabsPlugin extends Plugin {
 			"only-tabs-hide-native",
 			this.settings.hideNativeTabs
 		);
+		document.body.toggleClass(
+			"only-tabs-layout-card",
+			this.settings.layoutStyle === "card"
+		);
+		document.body.toggleClass(
+			"only-tabs-layout-list",
+			this.settings.layoutStyle === "list"
+		);
 	}
 
 	async openView(): Promise<void> {

@@ -25,6 +25,7 @@ interface RuntimeWorkspace {
 interface RuntimeLeaf {
 	id: string;
 	parent: RuntimeParent | null;
+	setDimension?: (dimension: number | null) => void;
 }
 
 interface RuntimeParent {
@@ -107,21 +108,24 @@ export function moveLeafRelative(
 
 	const sourceParent = asRuntimeLeaf(sourceLeaf).parent;
 	const targetParent = asRuntimeLeaf(targetLeaf).parent;
-	if (!sourceParent || sourceParent.id !== targetParent?.id) return false;
+	if (!sourceParent || !targetParent) return false;
 
 	const sourceIndex = sourceParent.children.indexOf(sourceLeaf);
-	const targetIndex = sourceParent.children.indexOf(targetLeaf);
+	const targetIndex = targetParent.children.indexOf(targetLeaf);
 	if (sourceIndex < 0 || targetIndex < 0) return false;
 
 	let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
-	if (sourceIndex < insertIndex) {
+	if (sourceParent.id === targetParent.id && sourceIndex < insertIndex) {
 		insertIndex -= 1;
 	}
-	if (sourceIndex === insertIndex) return false;
+	if (sourceParent.id === targetParent.id && sourceIndex === insertIndex) {
+		return false;
+	}
 
 	sourceParent.removeChild(sourceLeaf);
-	sourceParent.insertChild(insertIndex, sourceLeaf);
-	sourceParent.selectTab(sourceLeaf);
+	asRuntimeLeaf(sourceLeaf).setDimension?.(null);
+	targetParent.insertChild(insertIndex, sourceLeaf);
+	targetParent.selectTab(sourceLeaf);
 	const workspace = app.workspace as typeof app.workspace & RuntimeWorkspace;
 	workspace.requestResize?.();
 	workspace.onLayoutChange?.();
