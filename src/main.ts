@@ -53,7 +53,7 @@ export default class OnlyTabsPlugin extends Plugin {
 		this.addSettingTab(new OnlyTabsSettingTab(this.app, this));
 
 		this.app.workspace.onLayoutReady(() => {
-			this.openView();
+			this.openView(false);
 		});
 	}
 
@@ -105,13 +105,15 @@ export default class OnlyTabsPlugin extends Plugin {
 		);
 	}
 
-	async openView(): Promise<void> {
+	async openView(reveal = true): Promise<void> {
 		const existing = this.app.workspace.getLeavesOfType(
 			ONLY_TABS_VIEW_TYPE
 		)[0];
 		const leaf = existing ?? this.app.workspace.getLeftLeaf(false);
 		await leaf.setViewState({ type: ONLY_TABS_VIEW_TYPE, active: true });
-		this.app.workspace.revealLeaf(leaf);
+		if (reveal) {
+			this.app.workspace.revealLeaf(leaf);
+		}
 	}
 
 	refreshViews(): void {

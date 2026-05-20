@@ -1,4 +1,4 @@
-import { Menu, WorkspaceLeaf } from "obsidian";
+import { Menu, WorkspaceLeaf, setIcon } from "obsidian";
 import OnlyTabsPlugin from "./main";
 import {
 	TabItem,
@@ -20,6 +20,9 @@ interface RowRecord {
 export class TabController {
 	private plugin: OnlyTabsPlugin;
 	private rootEl: HTMLElement;
+	private toolbarEl: HTMLElement;
+	private listButtonEl: HTMLButtonElement;
+	private cardButtonEl: HTMLButtonElement;
 	private listEl: HTMLElement;
 	private emptyEl: HTMLElement;
 	private rows = new Map<string, RowRecord>();
@@ -34,11 +37,15 @@ export class TabController {
 		this.plugin = plugin;
 		containerEl.empty();
 		this.rootEl = containerEl.createDiv({ cls: "only-tabs-root" });
+		this.toolbarEl = this.rootEl.createDiv({ cls: "only-tabs-toolbar" });
+		this.listButtonEl = this.createLayoutButton("list", "List view");
+		this.cardButtonEl = this.createLayoutButton("card", "Card view");
 		this.listEl = this.rootEl.createDiv({ cls: "only-tabs-list" });
 		this.emptyEl = this.listEl.createDiv({
 			cls: "only-tabs-empty",
 			text: "No open tabs",
 		});
+		this.syncLayoutButtons();
 	}
 
 	dispose(): void {
@@ -81,10 +88,13 @@ export class TabController {
 		}
 
 		this.listEl
-			.querySelectorAll(".only-tabs-group-separator")
+			.querySelectorAll(
+				".only-tabs-group-separator, .only-tabs-group-drop-zone"
+			)
 			.forEach((el) => el.remove());
 
 		let previousParentId: string | null = null;
+		let previousItem: TabItem | null = null;
 		for (const id of nextIds) {
 			const row = this.rows.get(id);
 			const item = itemsById.get(id);
@@ -93,15 +103,25 @@ export class TabController {
 				previousParentId !== null &&
 				item.parentId !== previousParentId
 			) {
+				if (previousItem) {
+					this.listEl.appendChild(
+						this.createGroupDropZone(previousItem)
+					);
+				}
 				this.listEl.appendChild(this.createGroupSeparator());
 			}
 			if (row) this.listEl.appendChild(row.el);
 			previousParentId = item?.parentId ?? previousParentId;
+			previousItem = item ?? previousItem;
+		}
+		if (previousItem) {
+			this.listEl.appendChild(this.createGroupDropZone(previousItem));
 		}
 
 		this.orderedIds = nextIds;
 		this.emptyEl.toggle(items.length === 0);
 		this.syncActive(items);
+		this.syncLayoutButtons();
 	}
 
 	syncActive(items = collectTabs(this.plugin.app)): void {
@@ -187,8 +207,62 @@ export class TabController {
 		return row;
 	}
 
+	private createLayoutButton(
+		style: "list" | "card",
+		label: string
+	): HTMLButtonElement {
+		const button = this.toolbarEl.createEl("button", {
+			cls: "only-tabs-layout-button",
+			attr: {
+				"aria-label": label,
+				title: label,
+			},
+		});
+		setIcon(button, style === "list" ? "list" : "layout-grid");
+		button.addEventListener("click", async () => {
+			if (this.plugin.settings.layoutStyle === style) return;
+			this.plugin.settings.layoutStyle = style;
+			this.plugin.applySettings();
+			this.syncLayoutButtons();
+			await this.plugin.saveSettings();
+		});
+		return button;
+	}
+
+	private syncLayoutButtons(): void {
+		const isList = this.plugin.settings.layoutStyle === "list";
+		this.listButtonEl.toggleClass("is-active", isList);
+		this.cardButtonEl.toggleClass("is-active", !isList);
+	}
+
 	private createGroupSeparator(): HTMLElement {
 		return createDiv({ cls: "only-tabs-group-separator" });
+	}
+
+	private createGroupDropZone(item: TabItem): HTMLElement {
+		const el = createDiv({ cls: "only-tabs-group-drop-zone" });
+		el.addEventListener("dragover", (event) => {
+			if (!this.draggedId || this.draggedId === item.id) return;
+			event.preventDefault();
+			el.toggleClass("is-drag-over", true);
+		});
+		el.addEventListener("dragleave", () => {
+			el.toggleClass("is-drag-over", false);
+		});
+		el.addEventListener("drop", (event) => {
+			event.preventDefault();
+			el.toggleClass("is-drag-over", false);
+			const sourceId =
+				event.dataTransfer?.getData("text/plain") || this.draggedId;
+			this.clearAllDragState();
+			if (
+				sourceId &&
+				moveLeafRelative(this.plugin.app, sourceId, item.id, "after")
+			) {
+				this.scheduleRefresh();
+			}
+		});
+		return el;
 	}
 
 	private setDropTarget(
