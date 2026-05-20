@@ -4,11 +4,17 @@ import OnlyTabsPlugin from "./main";
 export interface OnlyTabsSettings {
 	hideNativeTabs: boolean;
 	layoutStyle: "list" | "card";
+	showIcons: boolean;
+	cardWidth: number;
+	cardHeight: number;
 }
 
 export const DEFAULT_SETTINGS: OnlyTabsSettings = {
 	hideNativeTabs: true,
 	layoutStyle: "list",
+	showIcons: true,
+	cardWidth: 180,
+	cardHeight: 56,
 };
 
 export class OnlyTabsSettingTab extends PluginSettingTab {
@@ -47,6 +53,49 @@ export class OnlyTabsSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.layoutStyle =
 							value === "card" ? "card" : "list";
+						this.plugin.applySettings();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Show file icons")
+			.setDesc("Show the icon before each tab title.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.showIcons)
+					.onChange(async (value) => {
+						this.plugin.settings.showIcons = value;
+						this.plugin.applySettings();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Card width")
+			.setDesc("Minimum card width in pixels.")
+			.addSlider((slider) => {
+				slider
+					.setLimits(120, 320, 10)
+					.setValue(this.plugin.settings.cardWidth)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.cardWidth = value;
+						this.plugin.applySettings();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Card height")
+			.setDesc("Fixed card height in pixels. Overflowing title text is hidden.")
+			.addSlider((slider) => {
+				slider
+					.setLimits(40, 120, 2)
+					.setValue(this.plugin.settings.cardHeight)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.cardHeight = value;
 						this.plugin.applySettings();
 						await this.plugin.saveSettings();
 					});

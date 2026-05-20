@@ -132,6 +132,16 @@ export function moveLeafRelative(
 	return true;
 }
 
+export function closeOtherLeavesInGroup(leaf: WorkspaceLeaf): void {
+	const parent = asRuntimeLeaf(leaf).parent;
+	if (!parent) return;
+	for (const sibling of [...parent.children]) {
+		if (getLeafId(sibling) !== getLeafId(leaf)) {
+			sibling.detach();
+		}
+	}
+}
+
 export function renderIcon(el: HTMLElement, icon: string) {
 	el.empty();
 	setIcon(el, icon || "file");

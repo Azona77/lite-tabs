@@ -59,6 +59,11 @@ export default class OnlyTabsPlugin extends Plugin {
 
 	onunload(): void {
 		document.body.removeClass("only-tabs-hide-native");
+		document.body.removeClass("only-tabs-layout-card");
+		document.body.removeClass("only-tabs-layout-list");
+		document.body.removeClass("only-tabs-hide-icons");
+		document.body.style.removeProperty("--only-tabs-card-width");
+		document.body.style.removeProperty("--only-tabs-card-height");
 	}
 
 	async loadSettings(): Promise<void> {
@@ -85,6 +90,18 @@ export default class OnlyTabsPlugin extends Plugin {
 		document.body.toggleClass(
 			"only-tabs-layout-list",
 			this.settings.layoutStyle === "list"
+		);
+		document.body.toggleClass(
+			"only-tabs-hide-icons",
+			!this.settings.showIcons
+		);
+		document.body.style.setProperty(
+			"--only-tabs-card-width",
+			`${this.settings.cardWidth}px`
+		);
+		document.body.style.setProperty(
+			"--only-tabs-card-height",
+			`${this.settings.cardHeight}px`
 		);
 	}
 

@@ -3,7 +3,14 @@ body.only-tabs-hide-native .workspace-tabs .workspace-tab-header:not(.is-active)
 }
 
 body.only-tabs-layout-card .only-tabs-list {
+	display: grid;
 	gap: 6px;
+	grid-template-columns: repeat(
+		auto-fill,
+		minmax(min(100%, var(--only-tabs-card-width, 180px)), 1fr)
+	);
+	height: auto;
+	align-content: start;
 	padding: 8px;
 }
 
@@ -11,16 +18,40 @@ body.only-tabs-layout-card .only-tabs-item {
 	align-items: start;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
-	box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 	grid-template-columns: 20px minmax(0, 1fr) 22px;
-	min-height: 46px;
+	box-sizing: border-box;
+	height: var(--only-tabs-card-height, 56px);
+	overflow: hidden;
 	padding: 8px;
 }
 
 body.only-tabs-layout-card .only-tabs-title {
 	font-size: var(--font-ui-medium);
 	line-height: 1.35;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 	white-space: normal;
+}
+
+body.only-tabs-layout-card .only-tabs-item.is-drop-before {
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+body.only-tabs-layout-card .only-tabs-item.is-drop-after {
+	box-shadow: inset -2px 0 0 var(--interactive-accent);
+}
+
+body.only-tabs-layout-card .only-tabs-group-separator,
+body.only-tabs-layout-card .only-tabs-empty {
+	grid-column: 1 / -1;
+}
+
+body.only-tabs-hide-icons .only-tabs-item {
+	grid-template-columns: minmax(0, 1fr) 22px;
+}
+
+body.only-tabs-hide-icons .only-tabs-icon {
+	display: none;
 }
 
 .only-tabs-root {

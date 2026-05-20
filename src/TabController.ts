@@ -1,7 +1,8 @@
-import { WorkspaceLeaf } from "obsidian";
+import { Menu, WorkspaceLeaf } from "obsidian";
 import OnlyTabsPlugin from "./main";
 import {
 	TabItem,
+	closeOtherLeavesInGroup,
 	collectTabs,
 	getLeafId,
 	moveLeafRelative,
@@ -143,6 +144,10 @@ export class TabController {
 			event.stopPropagation();
 			this.closeLeaf(item.leaf);
 		});
+		el.addEventListener("contextmenu", (event) => {
+			event.preventDefault();
+			this.showContextMenu(item.leaf, event);
+		});
 
 		el.addEventListener("dragstart", (event) => {
 			this.draggedId = item.id;
@@ -195,8 +200,14 @@ export class TabController {
 			this.clearDropTarget(this.dragOverId);
 		}
 		const rect = el.getBoundingClientRect();
-		const position =
-			event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+		const isCardLayout = this.plugin.settings.layoutStyle === "card";
+		const position = isCardLayout
+			? event.clientX > rect.left + rect.width / 2
+				? "after"
+				: "before"
+			: event.clientY > rect.top + rect.height / 2
+				? "after"
+				: "before";
 		this.dragOverId = id;
 		this.dropPosition = position;
 		el.toggleClass("is-drag-over", true);
@@ -238,6 +249,26 @@ export class TabController {
 
 	private activateLeaf(leaf: WorkspaceLeaf): void {
 		this.plugin.app.workspace.setActiveLeaf(leaf, { focus: true });
+	}
+
+	private showContextMenu(leaf: WorkspaceLeaf, event: MouseEvent): void {
+		const menu = new Menu();
+		menu.addItem((item) => {
+			item.setTitle("Close").setIcon("x").onClick(() => {
+				this.closeLeaf(leaf);
+			});
+		});
+		menu.addItem((item) => {
+			item
+				.setTitle("Close others in same group")
+				.setIcon("x-circle")
+				.onClick(() => {
+					this.activateLeaf(leaf);
+					closeOtherLeavesInGroup(leaf);
+					this.scheduleRefresh();
+				});
+		});
+		menu.showAtMouseEvent(event);
 	}
 
 	private closeLeaf(leaf: WorkspaceLeaf): void {
