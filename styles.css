@@ -50,6 +50,18 @@ body.only-tabs-hide-native .workspace-tabs .workspace-tab-header:not(.is-active)
 	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
+.only-tabs-item.is-drag-source {
+	opacity: 0.55;
+}
+
+.only-tabs-item.is-drop-before {
+	box-shadow: inset 0 2px 0 var(--interactive-accent);
+}
+
+.only-tabs-item.is-drop-after {
+	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+
 .only-tabs-group-separator {
 	background: var(--background-modifier-border);
 	height: 1px;

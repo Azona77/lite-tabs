@@ -90,6 +90,15 @@ export function moveLeafBefore(
 	sourceId: string,
 	targetId: string
 ): boolean {
+	return moveLeafRelative(app, sourceId, targetId, "before");
+}
+
+export function moveLeafRelative(
+	app: App,
+	sourceId: string,
+	targetId: string,
+	position: "before" | "after"
+): boolean {
 	if (sourceId === targetId) return false;
 
 	const sourceLeaf = app.workspace.getLeafById(sourceId);
@@ -104,7 +113,12 @@ export function moveLeafBefore(
 	const targetIndex = sourceParent.children.indexOf(targetLeaf);
 	if (sourceIndex < 0 || targetIndex < 0) return false;
 
-	const insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+	let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
+	if (sourceIndex < insertIndex) {
+		insertIndex -= 1;
+	}
+	if (sourceIndex === insertIndex) return false;
+
 	sourceParent.removeChild(sourceLeaf);
 	sourceParent.insertChild(insertIndex, sourceLeaf);
 	sourceParent.selectTab(sourceLeaf);

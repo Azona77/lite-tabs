@@ -4,7 +4,7 @@ import {
 	TabItem,
 	collectTabs,
 	getLeafId,
-	moveLeafBefore,
+	moveLeafRelative,
 	renderIcon,
 } from "./tabs";
 
@@ -26,6 +26,8 @@ export class TabController {
 	private frame: number | null = null;
 	private activeId: string | null = null;
 	private draggedId: string | null = null;
+	private dragOverId: string | null = null;
+	private dropPosition: "before" | "after" = "before";
 
 	constructor(plugin: OnlyTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -144,30 +146,35 @@ export class TabController {
 
 		el.addEventListener("dragstart", (event) => {
 			this.draggedId = item.id;
+			el.toggleClass("is-drag-source", true);
 			event.dataTransfer?.setData("text/plain", item.id);
 			event.dataTransfer?.setDragImage(el, 10, 10);
 		});
 		el.addEventListener("dragover", (event) => {
 			if (!this.draggedId || this.draggedId === item.id) return;
 			event.preventDefault();
-			el.toggleClass("is-drag-over", true);
+			this.setDropTarget(item.id, el, event);
 		});
 		el.addEventListener("dragleave", () => {
-			el.toggleClass("is-drag-over", false);
+			this.clearDropTarget(item.id);
 		});
 		el.addEventListener("drop", (event) => {
 			event.preventDefault();
-			el.toggleClass("is-drag-over", false);
+			this.setDropTarget(item.id, el, event);
 			const sourceId =
 				event.dataTransfer?.getData("text/plain") || this.draggedId;
+			const position = this.dropPosition;
+			this.clearAllDragState();
 			this.draggedId = null;
-			if (sourceId && moveLeafBefore(this.plugin.app, sourceId, item.id)) {
+			if (
+				sourceId &&
+				moveLeafRelative(this.plugin.app, sourceId, item.id, position)
+			) {
 				this.scheduleRefresh();
 			}
 		});
 		el.addEventListener("dragend", () => {
-			this.draggedId = null;
-			el.toggleClass("is-drag-over", false);
+			this.clearAllDragState();
 		});
 
 		const row = { item, el, iconEl, titleEl, closeEl };
@@ -177,6 +184,47 @@ export class TabController {
 
 	private createGroupSeparator(): HTMLElement {
 		return createDiv({ cls: "only-tabs-group-separator" });
+	}
+
+	private setDropTarget(
+		id: string,
+		el: HTMLElement,
+		event: DragEvent
+	): void {
+		if (this.dragOverId && this.dragOverId !== id) {
+			this.clearDropTarget(this.dragOverId);
+		}
+		const rect = el.getBoundingClientRect();
+		const position =
+			event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+		this.dragOverId = id;
+		this.dropPosition = position;
+		el.toggleClass("is-drag-over", true);
+		el.toggleClass("is-drop-before", position === "before");
+		el.toggleClass("is-drop-after", position === "after");
+	}
+
+	private clearDropTarget(id: string): void {
+		const row = this.rows.get(id);
+		if (!row) return;
+		row.el.toggleClass("is-drag-over", false);
+		row.el.toggleClass("is-drop-before", false);
+		row.el.toggleClass("is-drop-after", false);
+		if (this.dragOverId === id) {
+			this.dragOverId = null;
+		}
+	}
+
+	private clearAllDragState(): void {
+		for (const row of this.rows.values()) {
+			row.el.toggleClass("is-drag-source", false);
+			row.el.toggleClass("is-drag-over", false);
+			row.el.toggleClass("is-drop-before", false);
+			row.el.toggleClass("is-drop-after", false);
+		}
+		this.draggedId = null;
+		this.dragOverId = null;
+		this.dropPosition = "before";
 	}
 
 	private updateRow(row: RowRecord, item: TabItem): void {
