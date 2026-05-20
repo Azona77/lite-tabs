@@ -1,0 +1,5 @@
+node_modules/
+*.map
+data.json
+.DS_Store
+obsidian-vertical-tabs-master/

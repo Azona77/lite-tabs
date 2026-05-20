@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-only-tabs",
+	"name": "Only Tabs",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.0",
+	"description": "A lightweight independent panel for open tabs.",
+	"author": "",
+	"authorUrl": "",
+	"isDesktopOnly": false
+}
