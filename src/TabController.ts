@@ -23,6 +23,7 @@ export class TabController {
 	private toolbarEl: HTMLElement;
 	private listButtonEl: HTMLButtonElement;
 	private cardButtonEl: HTMLButtonElement;
+	private iconButtonEl: HTMLButtonElement;
 	private listEl: HTMLElement;
 	private emptyEl: HTMLElement;
 	private rows = new Map<string, RowRecord>();
@@ -40,12 +41,14 @@ export class TabController {
 		this.toolbarEl = this.rootEl.createDiv({ cls: "only-tabs-toolbar" });
 		this.listButtonEl = this.createLayoutButton("list", "List view");
 		this.cardButtonEl = this.createLayoutButton("card", "Card view");
+		this.iconButtonEl = this.createIconButton();
 		this.listEl = this.rootEl.createDiv({ cls: "only-tabs-list" });
 		this.emptyEl = this.listEl.createDiv({
 			cls: "only-tabs-empty",
 			text: "No open tabs",
 		});
 		this.syncLayoutButtons();
+		this.syncIconButton();
 	}
 
 	dispose(): void {
@@ -95,6 +98,7 @@ export class TabController {
 
 		let previousParentId: string | null = null;
 		let previousItem: TabItem | null = null;
+		let groupItemCount = 0;
 		for (const id of nextIds) {
 			const row = this.rows.get(id);
 			const item = itemsById.get(id);
@@ -104,24 +108,25 @@ export class TabController {
 				item.parentId !== previousParentId
 			) {
 				if (previousItem) {
-					this.listEl.appendChild(
-						this.createGroupDropZone(previousItem)
-					);
+					this.appendGroupDropZones(previousItem, groupItemCount);
 				}
 				this.listEl.appendChild(this.createGroupSeparator());
+				groupItemCount = 0;
 			}
 			if (row) this.listEl.appendChild(row.el);
 			previousParentId = item?.parentId ?? previousParentId;
 			previousItem = item ?? previousItem;
+			if (item) groupItemCount += 1;
 		}
 		if (previousItem) {
-			this.listEl.appendChild(this.createGroupDropZone(previousItem));
+			this.appendGroupDropZones(previousItem, groupItemCount);
 		}
 
 		this.orderedIds = nextIds;
 		this.emptyEl.toggle(items.length === 0);
 		this.syncActive(items);
 		this.syncLayoutButtons();
+		this.syncIconButton();
 	}
 
 	syncActive(items = collectTabs(this.plugin.app)): void {
@@ -171,6 +176,7 @@ export class TabController {
 
 		el.addEventListener("dragstart", (event) => {
 			this.draggedId = item.id;
+			this.rootEl.toggleClass("is-dragging", true);
 			el.toggleClass("is-drag-source", true);
 			event.dataTransfer?.setData("text/plain", item.id);
 			event.dataTransfer?.setDragImage(el, 10, 10);
@@ -235,8 +241,48 @@ export class TabController {
 		this.cardButtonEl.toggleClass("is-active", !isList);
 	}
 
+	private createIconButton(): HTMLButtonElement {
+		const button = this.toolbarEl.createEl("button", {
+			cls: "only-tabs-toolbar-button",
+			attr: {
+				"aria-label": "Toggle file icons",
+				title: "Toggle file icons",
+			},
+		});
+		button.addEventListener("click", async () => {
+			this.plugin.settings.showIcons = !this.plugin.settings.showIcons;
+			this.plugin.applySettings();
+			this.syncIconButton();
+			await this.plugin.saveSettings();
+		});
+		return button;
+	}
+
+	private syncIconButton(): void {
+		const showIcons = this.plugin.settings.showIcons;
+		this.iconButtonEl.toggleClass("is-active", showIcons);
+		setIcon(this.iconButtonEl, showIcons ? "file" : "file-x");
+	}
+
 	private createGroupSeparator(): HTMLElement {
 		return createDiv({ cls: "only-tabs-group-separator" });
+	}
+
+	private appendGroupDropZones(item: TabItem, groupItemCount: number): void {
+		const count = this.getGroupDropZoneCount(groupItemCount);
+		for (let index = 0; index < count; index += 1) {
+			this.listEl.appendChild(this.createGroupDropZone(item));
+		}
+	}
+
+	private getGroupDropZoneCount(groupItemCount: number): number {
+		if (this.plugin.settings.layoutStyle !== "card") return 1;
+		const columns = getComputedStyle(this.listEl)
+			.gridTemplateColumns.split(" ")
+			.filter(Boolean).length;
+		if (columns <= 1) return 1;
+		const remainder = groupItemCount % columns;
+		return remainder === 0 ? 1 : columns - remainder;
 	}
 
 	private createGroupDropZone(item: TabItem): HTMLElement {
@@ -310,6 +356,7 @@ export class TabController {
 		this.draggedId = null;
 		this.dragOverId = null;
 		this.dropPosition = "before";
+		this.rootEl.toggleClass("is-dragging", false);
 	}
 
 	private updateRow(row: RowRecord, item: TabItem): void {
