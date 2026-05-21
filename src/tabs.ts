@@ -1,6 +1,6 @@
 import { App, View, WorkspaceLeaf, setIcon } from "obsidian";
 
-export const ONLY_TABS_VIEW_TYPE = "only-tabs-view";
+export const JUST_TABS_VIEW_TYPE = "just-tabs-view";
 
 export interface TabItem {
 	id: string;
@@ -72,7 +72,7 @@ export function collectTabs(app: App): TabItem[] {
 	const items: TabItem[] = [];
 
 	iterateMainLeaves(app, (leaf) => {
-		if (leaf.getViewState().type === ONLY_TABS_VIEW_TYPE) return;
+		if (leaf.getViewState().type === JUST_TABS_VIEW_TYPE) return;
 		items.push({
 			id: getLeafId(leaf),
 			leaf,

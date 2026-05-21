@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-only-tabs",
+	"name": "obsidian-just-tabs",
 	"version": "0.1.0",
 	"description": "A lightweight Obsidian tab panel focused on fast native-tab replacement.",
 	"main": "main.js",

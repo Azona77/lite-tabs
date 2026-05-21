@@ -1,5 +1,5 @@
 import { Menu, WorkspaceLeaf, setIcon } from "obsidian";
-import OnlyTabsPlugin from "./main";
+import JustTabsPlugin from "./main";
 import {
 	TabItem,
 	closeOtherLeavesInGroup,
@@ -18,7 +18,7 @@ interface RowRecord {
 }
 
 export class TabController {
-	private plugin: OnlyTabsPlugin;
+	private plugin: JustTabsPlugin;
 	private rootEl: HTMLElement;
 	private toolbarEl: HTMLElement;
 	private listButtonEl: HTMLButtonElement;
@@ -34,17 +34,17 @@ export class TabController {
 	private dragOverId: string | null = null;
 	private dropPosition: "before" | "after" = "before";
 
-	constructor(plugin: OnlyTabsPlugin, containerEl: HTMLElement) {
+	constructor(plugin: JustTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
 		containerEl.empty();
-		this.rootEl = containerEl.createDiv({ cls: "only-tabs-root" });
-		this.toolbarEl = this.rootEl.createDiv({ cls: "only-tabs-toolbar" });
+		this.rootEl = containerEl.createDiv({ cls: "just-tabs-root" });
+		this.toolbarEl = this.rootEl.createDiv({ cls: "just-tabs-toolbar" });
 		this.listButtonEl = this.createLayoutButton("list", "List view");
 		this.cardButtonEl = this.createLayoutButton("card", "Card view");
 		this.iconButtonEl = this.createIconButton();
-		this.listEl = this.rootEl.createDiv({ cls: "only-tabs-list" });
+		this.listEl = this.rootEl.createDiv({ cls: "just-tabs-list" });
 		this.emptyEl = this.listEl.createDiv({
-			cls: "only-tabs-empty",
+			cls: "just-tabs-empty",
 			text: "No open tabs",
 		});
 		this.syncLayoutButtons();
@@ -92,7 +92,7 @@ export class TabController {
 
 		this.listEl
 			.querySelectorAll(
-				".only-tabs-group-separator, .only-tabs-group-drop-zone"
+				".just-tabs-group-separator, .just-tabs-group-drop-zone"
 			)
 			.forEach((el) => el.remove());
 
@@ -143,17 +143,17 @@ export class TabController {
 	}
 
 	private createRow(item: TabItem): RowRecord {
-		const el = createDiv({ cls: "only-tabs-item" });
+		const el = createDiv({ cls: "just-tabs-item" });
 		el.dataset.leafId = item.id;
 		el.draggable = true;
 
-		const iconEl = el.createDiv({ cls: "only-tabs-icon" });
-		const titleEl = el.createDiv({ cls: "only-tabs-title" });
-		const closeEl = el.createDiv({ cls: "only-tabs-close" });
+		const iconEl = el.createDiv({ cls: "just-tabs-icon" });
+		const titleEl = el.createDiv({ cls: "just-tabs-title" });
+		const closeEl = el.createDiv({ cls: "just-tabs-close" });
 		renderIcon(closeEl, "x");
 
 		el.addEventListener("click", (event) => {
-			if ((event.target as HTMLElement).closest(".only-tabs-close")) {
+			if ((event.target as HTMLElement).closest(".just-tabs-close")) {
 				this.closeLeaf(item.leaf);
 				return;
 			}
@@ -218,7 +218,7 @@ export class TabController {
 		label: string
 	): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
-			cls: "only-tabs-layout-button",
+			cls: "just-tabs-layout-button",
 			attr: {
 				"aria-label": label,
 				title: label,
@@ -243,7 +243,7 @@ export class TabController {
 
 	private createIconButton(): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
-			cls: "only-tabs-toolbar-button",
+			cls: "just-tabs-toolbar-button",
 			attr: {
 				"aria-label": "Toggle file icons",
 				title: "Toggle file icons",
@@ -265,7 +265,7 @@ export class TabController {
 	}
 
 	private createGroupSeparator(): HTMLElement {
-		return createDiv({ cls: "only-tabs-group-separator" });
+		return createDiv({ cls: "just-tabs-group-separator" });
 	}
 
 	private appendGroupDropZones(item: TabItem, groupItemCount: number): void {
@@ -286,7 +286,7 @@ export class TabController {
 	}
 
 	private createGroupDropZone(item: TabItem): HTMLElement {
-		const el = createDiv({ cls: "only-tabs-group-drop-zone" });
+		const el = createDiv({ cls: "just-tabs-group-drop-zone" });
 		el.addEventListener("dragover", (event) => {
 			if (!this.draggedId || this.draggedId === item.id) return;
 			event.preventDefault();

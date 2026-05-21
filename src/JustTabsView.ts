@@ -1,13 +1,13 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import OnlyTabsPlugin from "./main";
-import { ONLY_TABS_VIEW_TYPE } from "./tabs";
+import JustTabsPlugin from "./main";
+import { JUST_TABS_VIEW_TYPE } from "./tabs";
 import { TabController } from "./TabController";
 
-export class OnlyTabsView extends ItemView {
+export class JustTabsView extends ItemView {
 	private controller: TabController | null = null;
-	private plugin: OnlyTabsPlugin;
+	private plugin: JustTabsPlugin;
 
-	constructor(leaf: WorkspaceLeaf, plugin: OnlyTabsPlugin) {
+	constructor(leaf: WorkspaceLeaf, plugin: JustTabsPlugin) {
 		super(leaf);
 		this.plugin = plugin;
 		this.navigation = false;
@@ -15,11 +15,11 @@ export class OnlyTabsView extends ItemView {
 	}
 
 	getViewType(): string {
-		return ONLY_TABS_VIEW_TYPE;
+		return JUST_TABS_VIEW_TYPE;
 	}
 
 	getDisplayText(): string {
-		return "Only Tabs";
+		return "Just Tabs";
 	}
 
 	async onOpen(): Promise<void> {

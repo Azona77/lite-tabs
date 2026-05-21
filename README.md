@@ -1,8 +1,8 @@
-# Obsidian Only Tabs
+# Obsidian Just Tabs
 
 English | [中文](#中文)
 
-Obsidian Only Tabs is a lightweight Obsidian plugin that replaces the native single-line tab strip with an independent tab panel. It focuses on fast tab switching, simple drag sorting, and low runtime overhead.
+Obsidian Just Tabs is a lightweight Obsidian plugin that replaces the native single-line tab strip with an independent tab panel. It focuses on fast switching, simple drag sorting, and low runtime overhead.
 
 ## Features
 
@@ -31,10 +31,10 @@ Obsidian Only Tabs is a lightweight Obsidian plugin that replaces the native sin
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from a release.
 2. Create this folder in your vault:
-   `Vault/.obsidian/plugins/obsidian-only-tabs/`
+   `Vault/.obsidian/plugins/obsidian-just-tabs/`
 3. Put the three files into that folder.
 4. Reload Obsidian.
-5. Enable `Only Tabs` in `Settings -> Community plugins`.
+5. Enable `Just Tabs` in `Settings -> Community plugins`.
 
 ### Build From Source
 
@@ -69,9 +69,9 @@ MIT
 
 # 中文
 
-[English](#obsidian-only-tabs) | 中文
+[English](#obsidian-just-tabs) | 中文
 
-Obsidian Only Tabs 是一款轻量级 Obsidian 插件，用独立面板替代原生单行标签页。插件重点关注快速切换、简单拖动排序和低运行时开销。
+Obsidian Just Tabs 是一款轻量级 Obsidian 插件，用独立面板替代原生单行标签页。插件重点关注快速切换、简单拖动排序和低运行时开销。
 
 ## 功能
 
@@ -100,10 +100,10 @@ Obsidian Only Tabs 是一款轻量级 Obsidian 插件，用独立面板替代原
 
 1. 从 release 下载 `main.js`、`manifest.json`、`styles.css`。
 2. 在你的库中创建目录：
-   `Vault/.obsidian/plugins/obsidian-only-tabs/`
+   `Vault/.obsidian/plugins/obsidian-just-tabs/`
 3. 将这三个文件放入该目录。
 4. 重启或刷新 Obsidian。
-5. 在 `设置 -> 第三方插件` 中启用 `Only Tabs`。
+5. 在 `设置 -> 第三方插件` 中启用 `Just Tabs`。
 
 ### 从源码构建
 

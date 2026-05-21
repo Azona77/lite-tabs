@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
-import OnlyTabsPlugin from "./main";
+import JustTabsPlugin from "./main";
 
-export interface OnlyTabsSettings {
+export interface JustTabsSettings {
 	hideNativeTabs: boolean;
 	layoutStyle: "list" | "card";
 	showIcons: boolean;
@@ -9,7 +9,7 @@ export interface OnlyTabsSettings {
 	cardHeight: number;
 }
 
-export const DEFAULT_SETTINGS: OnlyTabsSettings = {
+export const DEFAULT_SETTINGS: JustTabsSettings = {
 	hideNativeTabs: true,
 	layoutStyle: "list",
 	showIcons: true,
@@ -17,10 +17,10 @@ export const DEFAULT_SETTINGS: OnlyTabsSettings = {
 	cardHeight: 56,
 };
 
-export class OnlyTabsSettingTab extends PluginSettingTab {
-	private plugin: OnlyTabsPlugin;
+export class JustTabsSettingTab extends PluginSettingTab {
+	private plugin: JustTabsPlugin;
 
-	constructor(app: App, plugin: OnlyTabsPlugin) {
+	constructor(app: App, plugin: JustTabsPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -44,7 +44,7 @@ export class OnlyTabsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Layout style")
-			.setDesc("Choose how tabs are presented in the Only Tabs panel.")
+			.setDesc("Choose how tabs are presented in the Just Tabs panel.")
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOption("list", "List")

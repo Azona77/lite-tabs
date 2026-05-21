@@ -1,26 +1,26 @@
 import { Plugin, WorkspaceLeaf, addIcon } from "obsidian";
-import { OnlyTabsView } from "./OnlyTabsView";
-import { DEFAULT_SETTINGS, OnlyTabsSettingTab, OnlyTabsSettings } from "./settings";
-import { ONLY_TABS_VIEW_TYPE } from "./tabs";
+import { JustTabsView } from "./JustTabsView";
+import { DEFAULT_SETTINGS, JustTabsSettingTab, JustTabsSettings } from "./settings";
+import { JUST_TABS_VIEW_TYPE } from "./tabs";
 
-const ONLY_TABS_ICON = `
+const JUST_TABS_ICON = `
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
 	<rect x="16" y="18" width="68" height="12" rx="4" fill="currentColor"/>
 	<rect x="16" y="44" width="68" height="12" rx="4" fill="currentColor"/>
 	<rect x="16" y="70" width="68" height="12" rx="4" fill="currentColor"/>
 </svg>`;
 
-export default class OnlyTabsPlugin extends Plugin {
-	settings: OnlyTabsSettings = DEFAULT_SETTINGS;
+export default class JustTabsPlugin extends Plugin {
+	settings: JustTabsSettings = DEFAULT_SETTINGS;
 
 	async onload(): Promise<void> {
-		addIcon("only-tabs", ONLY_TABS_ICON);
+		addIcon("just-tabs", JUST_TABS_ICON);
 		await this.loadSettings();
 		this.applySettings();
 
 		this.registerView(
-			ONLY_TABS_VIEW_TYPE,
-			(leaf) => new OnlyTabsView(leaf, this)
+			JUST_TABS_VIEW_TYPE,
+			(leaf) => new JustTabsView(leaf, this)
 		);
 
 		this.registerEvent(
@@ -45,12 +45,12 @@ export default class OnlyTabsPlugin extends Plugin {
 		);
 
 		this.addCommand({
-			id: "open-only-tabs",
-			name: "Open Only Tabs",
+			id: "open-just-tabs",
+			name: "Open Just Tabs",
 			callback: () => this.openView(),
 		});
 
-		this.addSettingTab(new OnlyTabsSettingTab(this.app, this));
+		this.addSettingTab(new JustTabsSettingTab(this.app, this));
 
 		this.app.workspace.onLayoutReady(() => {
 			this.openView(false);
@@ -58,12 +58,12 @@ export default class OnlyTabsPlugin extends Plugin {
 	}
 
 	onunload(): void {
-		document.body.removeClass("only-tabs-hide-native");
-		document.body.removeClass("only-tabs-layout-card");
-		document.body.removeClass("only-tabs-layout-list");
-		document.body.removeClass("only-tabs-hide-icons");
-		document.body.style.removeProperty("--only-tabs-card-width");
-		document.body.style.removeProperty("--only-tabs-card-height");
+		document.body.removeClass("just-tabs-hide-native");
+		document.body.removeClass("just-tabs-layout-card");
+		document.body.removeClass("just-tabs-layout-list");
+		document.body.removeClass("just-tabs-hide-icons");
+		document.body.style.removeProperty("--just-tabs-card-width");
+		document.body.style.removeProperty("--just-tabs-card-height");
 	}
 
 	async loadSettings(): Promise<void> {
@@ -80,37 +80,37 @@ export default class OnlyTabsPlugin extends Plugin {
 
 	applySettings(): void {
 		document.body.toggleClass(
-			"only-tabs-hide-native",
+			"just-tabs-hide-native",
 			this.settings.hideNativeTabs
 		);
 		document.body.toggleClass(
-			"only-tabs-layout-card",
+			"just-tabs-layout-card",
 			this.settings.layoutStyle === "card"
 		);
 		document.body.toggleClass(
-			"only-tabs-layout-list",
+			"just-tabs-layout-list",
 			this.settings.layoutStyle === "list"
 		);
 		document.body.toggleClass(
-			"only-tabs-hide-icons",
+			"just-tabs-hide-icons",
 			!this.settings.showIcons
 		);
 		document.body.style.setProperty(
-			"--only-tabs-card-width",
+			"--just-tabs-card-width",
 			`${this.settings.cardWidth}px`
 		);
 		document.body.style.setProperty(
-			"--only-tabs-card-height",
+			"--just-tabs-card-height",
 			`${this.settings.cardHeight}px`
 		);
 	}
 
 	async openView(reveal = true): Promise<void> {
 		const existing = this.app.workspace.getLeavesOfType(
-			ONLY_TABS_VIEW_TYPE
+			JUST_TABS_VIEW_TYPE
 		)[0];
 		const leaf = existing ?? this.app.workspace.getLeftLeaf(false);
-		await leaf.setViewState({ type: ONLY_TABS_VIEW_TYPE, active: true });
+		await leaf.setViewState({ type: JUST_TABS_VIEW_TYPE, active: true });
 		if (reveal) {
 			this.app.workspace.revealLeaf(leaf);
 		}
@@ -128,10 +128,10 @@ export default class OnlyTabsPlugin extends Plugin {
 		}
 	}
 
-	private getViews(): OnlyTabsView[] {
+	private getViews(): JustTabsView[] {
 		return this.app.workspace
-			.getLeavesOfType(ONLY_TABS_VIEW_TYPE)
+			.getLeavesOfType(JUST_TABS_VIEW_TYPE)
 			.map((leaf: WorkspaceLeaf) => leaf.view)
-			.filter((view): view is OnlyTabsView => view instanceof OnlyTabsView);
+			.filter((view): view is JustTabsView => view instanceof JustTabsView);
 	}
 }
