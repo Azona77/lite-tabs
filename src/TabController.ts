@@ -29,17 +29,26 @@ export class TabController {
 	private listButtonEl: HTMLButtonElement;
 	private cardButtonEl: HTMLButtonElement;
 	private iconButtonEl: HTMLButtonElement;
+	private inactiveTabsButtonEl: HTMLButtonElement;
 	private refreshButtonEl: HTMLButtonElement;
 	private listEl: HTMLElement;
+	private dropIndicatorEl: HTMLElement;
 	private emptyEl: HTMLElement;
 	private rows = new Map<string, RowRecord>();
 	private orderedIds: string[] = [];
+	private orderedIndexById = new Map<string, number>();
 	private structureSignature: string | null = null;
 	private frame: number | null = null;
 	private activeId: string | null = null;
 	private draggedId: string | null = null;
+	private dragSourceEl: HTMLElement | null = null;
 	private dragOverId: string | null = null;
+	private dragOverZoneEl: HTMLElement | null = null;
+	private tailDropZoneEl: HTMLElement | null = null;
+	private lastGroupEndId: string | null = null;
 	private dropPosition: "before" | "after" = "before";
+	private indicatorKey: string | null = null;
+	private indicatorTargetKey: string | null = null;
 
 	constructor(plugin: JustTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -49,14 +58,25 @@ export class TabController {
 		this.listButtonEl = this.createLayoutButton("list", "List view");
 		this.cardButtonEl = this.createLayoutButton("card", "Card view");
 		this.iconButtonEl = this.createIconButton();
+		this.inactiveTabsButtonEl = this.createInactiveTabsButton();
 		this.refreshButtonEl = this.createRefreshButton();
 		this.listEl = this.rootEl.createDiv({ cls: "just-tabs-list" });
+		this.listEl.addEventListener("dragover", (event) => {
+			this.handleListDragOver(event);
+		});
+		this.listEl.addEventListener("drop", (event) => {
+			this.handleListDrop(event);
+		});
 		this.emptyEl = this.listEl.createDiv({
 			cls: "just-tabs-empty",
 			text: "No open tabs",
 		});
+		this.dropIndicatorEl = this.listEl.createDiv({
+			cls: "just-tabs-drop-indicator",
+		});
 		this.syncLayoutButtons();
 		this.syncIconButton();
+		this.syncInactiveTabsButton();
 	}
 
 	dispose(): void {
@@ -112,6 +132,8 @@ export class TabController {
 			}
 		}
 
+		this.tailDropZoneEl = null;
+		this.lastGroupEndId = null;
 		this.listEl
 			.querySelectorAll(
 				".just-tabs-group-separator, .just-tabs-group-drop-zone"
@@ -130,7 +152,7 @@ export class TabController {
 				item.parentId !== previousParentId
 			) {
 				if (previousItem) {
-					this.appendGroupDropZones(previousItem, groupItemCount);
+					this.appendGroupDropZones(previousItem, groupItemCount, false);
 				}
 				this.listEl.appendChild(this.createGroupSeparator());
 				groupItemCount = 0;
@@ -141,15 +163,20 @@ export class TabController {
 			if (item) groupItemCount += 1;
 		}
 		if (previousItem) {
-			this.appendGroupDropZones(previousItem, groupItemCount);
+			this.lastGroupEndId = previousItem.id;
+			this.appendGroupDropZones(previousItem, groupItemCount, true);
 		}
 
 		this.orderedIds = nextIds;
+		this.orderedIndexById = new Map(
+			nextIds.map((id, index) => [id, index])
+		);
 		this.structureSignature = nextSignature;
 		this.emptyEl.toggle(items.length === 0);
 		this.syncActive(items);
 		this.syncLayoutButtons();
 		this.syncIconButton();
+		this.syncInactiveTabsButton();
 	}
 
 	syncActive(items?: TabItem[]): void {
@@ -221,8 +248,10 @@ export class TabController {
 
 		el.addEventListener("dragstart", (event) => {
 			this.draggedId = item.id;
+			this.dragSourceEl = el;
 			this.rootEl.toggleClass("is-dragging", true);
 			el.toggleClass("is-drag-source", true);
+			this.updateTailDropZoneSize();
 			event.dataTransfer?.setData("text/plain", item.id);
 			event.dataTransfer?.setDragImage(el, 10, 10);
 		});
@@ -230,9 +259,6 @@ export class TabController {
 			if (!this.draggedId || this.draggedId === item.id) return;
 			event.preventDefault();
 			this.setDropTarget(item.id, el, event);
-		});
-		el.addEventListener("dragleave", () => {
-			this.clearDropTarget(item.id);
 		});
 		el.addEventListener("drop", (event) => {
 			event.preventDefault();
@@ -320,6 +346,30 @@ export class TabController {
 		setIcon(this.iconButtonEl, showIcons ? "file" : "file-x");
 	}
 
+	private createInactiveTabsButton(): HTMLButtonElement {
+		const button = this.toolbarEl.createEl("button", {
+			cls: "just-tabs-toolbar-button",
+			attr: {
+				"aria-label": "Hide inactive tabs",
+				title: "Hide inactive tabs",
+			},
+		});
+		button.addEventListener("click", async () => {
+			this.plugin.settings.hideNativeTabs =
+				!this.plugin.settings.hideNativeTabs;
+			this.plugin.applySettings();
+			this.syncInactiveTabsButton();
+			await this.plugin.saveSettings();
+		});
+		return button;
+	}
+
+	private syncInactiveTabsButton(): void {
+		const hideInactiveTabs = this.plugin.settings.hideNativeTabs;
+		this.inactiveTabsButtonEl.toggleClass("is-active", hideInactiveTabs);
+		setIcon(this.inactiveTabsButtonEl, hideInactiveTabs ? "eye-off" : "eye");
+	}
+
 	private createRefreshButton(): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
 			cls: "just-tabs-toolbar-button",
@@ -339,10 +389,25 @@ export class TabController {
 		return createDiv({ cls: "just-tabs-group-separator" });
 	}
 
-	private appendGroupDropZones(item: TabItem, groupItemCount: number): void {
-		const count = this.getGroupDropZoneCount(groupItemCount);
+	private appendGroupDropZones(
+		item: TabItem,
+		groupItemCount: number,
+		isLastGroup: boolean
+	): void {
+		let count = this.getGroupDropZoneCount(groupItemCount);
+		if (isLastGroup) {
+			count =
+				this.plugin.settings.layoutStyle === "card"
+					? this.getCardEndSlotCount(groupItemCount)
+					: 0;
+		}
 		for (let index = 0; index < count; index += 1) {
-			this.listEl.appendChild(this.createGroupDropZone(item));
+			this.listEl.appendChild(this.createGroupDropZone(item, false));
+		}
+		if (isLastGroup) {
+			this.tailDropZoneEl = this.createGroupDropZone(item, true);
+			this.listEl.appendChild(this.tailDropZoneEl);
+			this.updateTailDropZoneSize();
 		}
 	}
 
@@ -354,25 +419,30 @@ export class TabController {
 		return remainder === 0 ? 1 : columns - remainder;
 	}
 
+	private getCardEndSlotCount(groupItemCount: number): number {
+		const columns = this.getCardColumnCount();
+		if (columns <= 1) return 0;
+		const remainder = groupItemCount % columns;
+		return remainder === 0 ? 0 : columns - remainder;
+	}
+
 	private getCardColumnCount(): number {
 		return getComputedStyle(this.listEl)
 			.gridTemplateColumns.split(" ")
 			.filter(Boolean).length;
 	}
 
-	private createGroupDropZone(item: TabItem): HTMLElement {
-		const el = createDiv({ cls: "just-tabs-group-drop-zone" });
+	private createGroupDropZone(item: TabItem, isTail: boolean): HTMLElement {
+		const el = createDiv({
+			cls: `just-tabs-group-drop-zone${isTail ? " is-tail" : ""}`,
+		});
 		el.addEventListener("dragover", (event) => {
 			if (!this.draggedId || this.draggedId === item.id) return;
 			event.preventDefault();
-			el.toggleClass("is-drag-over", true);
-		});
-		el.addEventListener("dragleave", () => {
-			el.toggleClass("is-drag-over", false);
+			this.setGroupDropTarget(item.id, el);
 		});
 		el.addEventListener("drop", (event) => {
 			event.preventDefault();
-			el.toggleClass("is-drag-over", false);
 			const sourceId =
 				event.dataTransfer?.getData("text/plain") || this.draggedId;
 			this.clearAllDragState();
@@ -386,48 +456,164 @@ export class TabController {
 		return el;
 	}
 
+	private updateTailDropZoneSize(): void {
+		if (
+			!this.tailDropZoneEl ||
+			!this.lastGroupEndId ||
+			this.plugin.settings.layoutStyle !== "card"
+		) {
+			return;
+		}
+		const lastRow = this.rows.get(this.lastGroupEndId);
+		if (!lastRow) return;
+		const listRect = this.listEl.getBoundingClientRect();
+		const lastRect = lastRow.el.getBoundingClientRect();
+		const remainingHeight = Math.max(56, listRect.bottom - lastRect.bottom - 8);
+		this.tailDropZoneEl.style.minHeight = `${Math.round(remainingHeight)}px`;
+	}
+
 	private setDropTarget(
 		id: string,
 		el: HTMLElement,
 		event: DragEvent
 	): void {
-		if (this.dragOverId && this.dragOverId !== id) {
-			this.clearDropTarget(this.dragOverId);
-		}
 		const rect = el.getBoundingClientRect();
 		const isCardLayout = this.plugin.settings.layoutStyle === "card";
-		const position = isCardLayout
+		const rawPosition = isCardLayout
 			? event.clientX > rect.left + rect.width / 2
 				? "after"
 				: "before"
 			: event.clientY > rect.top + rect.height / 2
 				? "after"
 				: "before";
-		this.dragOverId = id;
-		this.dropPosition = position;
-		el.toggleClass("is-drag-over", true);
-		el.toggleClass("is-drop-before", position === "before");
-		el.toggleClass("is-drop-after", position === "after");
+		const target = this.normalizeDropTarget(id, rawPosition);
+		const targetRow = this.rows.get(target.id);
+		if (!targetRow) return;
+		const targetKey = `${target.id}:${target.position}`;
+		if (this.indicatorTargetKey === targetKey) {
+			this.dragOverId = target.id;
+			this.dropPosition = target.position;
+			return;
+		}
+		this.clearGroupDropTarget();
+		this.dragOverId = target.id;
+		this.dropPosition = target.position;
+		this.showDropIndicator(targetRow.el, target.position, targetKey);
 	}
 
-	private clearDropTarget(id: string): void {
-		const row = this.rows.get(id);
-		if (!row) return;
-		row.el.toggleClass("is-drag-over", false);
-		row.el.toggleClass("is-drop-before", false);
-		row.el.toggleClass("is-drop-after", false);
-		if (this.dragOverId === id) {
-			this.dragOverId = null;
+	private normalizeDropTarget(
+		id: string,
+		position: "before" | "after"
+	): { id: string; position: "before" | "after" } {
+		if (position !== "after") {
+			return { id, position };
 		}
+		const index = this.orderedIndexById.get(id) ?? -1;
+		const current = this.rows.get(id);
+		const nextId = index >= 0 ? this.orderedIds[index + 1] : null;
+		const next = nextId ? this.rows.get(nextId) : null;
+		if (current && next && current.item.parentId === next.item.parentId) {
+			return { id: next.item.id, position: "before" };
+		}
+		return { id, position };
+	}
+
+	private setGroupDropTarget(id: string, el: HTMLElement): void {
+		this.hideDropIndicator();
+		if (this.dragOverZoneEl !== el) {
+			this.clearGroupDropTarget();
+			el.toggleClass("is-drag-over", true);
+			this.dragOverZoneEl = el;
+		}
+		this.dragOverId = id;
+		this.dropPosition = "after";
+		this.indicatorTargetKey = null;
+	}
+
+	private clearGroupDropTarget(): void {
+		this.dragOverZoneEl?.toggleClass("is-drag-over", false);
+		this.dragOverZoneEl = null;
+	}
+
+	private showDropIndicator(
+		el: HTMLElement,
+		position: "before" | "after",
+		targetKey: string
+	): void {
+		this.indicatorTargetKey = targetKey;
+		const rect = el.getBoundingClientRect();
+		const listRect = this.listEl.getBoundingClientRect();
+		const isCardLayout = this.plugin.settings.layoutStyle === "card";
+		const x = isCardLayout
+			? position === "before"
+				? rect.left - listRect.left + this.listEl.scrollLeft
+				: rect.right - listRect.left + this.listEl.scrollLeft
+			: 6 + this.listEl.scrollLeft;
+		const y = isCardLayout
+			? rect.top - listRect.top + this.listEl.scrollTop
+			: (position === "before" ? rect.top : rect.bottom) -
+				listRect.top +
+				this.listEl.scrollTop;
+		const width = isCardLayout ? 2 : Math.max(0, listRect.width - 12);
+		const height = isCardLayout ? rect.height : 2;
+		const key = `${Math.round(x)}:${Math.round(y)}:${Math.round(width)}:${Math.round(height)}`;
+		if (this.indicatorKey === key) return;
+		this.indicatorKey = key;
+		this.dropIndicatorEl.style.width = `${width}px`;
+		this.dropIndicatorEl.style.height = `${height}px`;
+		this.dropIndicatorEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+		this.dropIndicatorEl.toggleClass("is-visible", true);
+	}
+
+	private hideDropIndicator(): void {
+		if (!this.indicatorKey && !this.indicatorTargetKey) return;
+		this.indicatorKey = null;
+		this.indicatorTargetKey = null;
+		this.dropIndicatorEl.toggleClass("is-visible", false);
+	}
+
+	private handleListDragOver(event: DragEvent): void {
+		if (!this.canDropAtListEnd(event)) return;
+		event.preventDefault();
+		this.setGroupDropTarget(
+			this.lastGroupEndId as string,
+			this.tailDropZoneEl ?? this.listEl
+		);
+	}
+
+	private handleListDrop(event: DragEvent): void {
+		if (!this.canDropAtListEnd(event)) return;
+		event.preventDefault();
+		const sourceId =
+			event.dataTransfer?.getData("text/plain") || this.draggedId;
+		const targetId = this.lastGroupEndId as string;
+		this.clearAllDragState();
+		if (
+			sourceId &&
+			moveLeafRelative(this.plugin.app, sourceId, targetId, "after")
+		) {
+			this.scheduleRefresh();
+		}
+	}
+
+	private canDropAtListEnd(event: DragEvent): boolean {
+		if (!this.draggedId || !this.lastGroupEndId) return false;
+		if (this.isInsideDropTarget(event.target)) return false;
+		const lastRow = this.rows.get(this.lastGroupEndId);
+		if (!lastRow) return false;
+		return event.clientY >= lastRow.el.getBoundingClientRect().bottom;
+	}
+
+	private isInsideDropTarget(target: EventTarget | null): boolean {
+		if (!(target instanceof HTMLElement)) return false;
+		return !!target.closest(".just-tabs-item, .just-tabs-group-drop-zone");
 	}
 
 	private clearAllDragState(): void {
-		for (const row of this.rows.values()) {
-			row.el.toggleClass("is-drag-source", false);
-			row.el.toggleClass("is-drag-over", false);
-			row.el.toggleClass("is-drop-before", false);
-			row.el.toggleClass("is-drop-after", false);
-		}
+		this.dragSourceEl?.toggleClass("is-drag-source", false);
+		this.dragSourceEl = null;
+		this.clearGroupDropTarget();
+		this.hideDropIndicator();
 		this.draggedId = null;
 		this.dragOverId = null;
 		this.dropPosition = "before";

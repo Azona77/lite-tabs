@@ -30,7 +30,7 @@ export class JustTabsSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Hide native tabs")
+			.setName("Hide inactive tabs")
 			.setDesc("Hide inactive native tab headers while keeping the active tab and native controls available.")
 			.addToggle((toggle) => {
 				toggle

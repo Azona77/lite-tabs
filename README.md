@@ -72,7 +72,7 @@ The production build writes `main.js` to the repository root. For a manual relea
 
 ## Settings
 
-- `Hide native tabs`: hide inactive native tab headers in the main editor area.
+- `Hide inactive tabs`: hide inactive native tab headers in the main editor area.
 - `Layout style`: choose list or card layout.
 - `Show file icons`: toggle file icons in the tab panel.
 - `Card width`: minimum card width.
@@ -162,7 +162,7 @@ npm run build
 
 ## 设置
 
-- `Hide native tabs`：隐藏主编辑区中的非活跃原生标签页标题。
+- `Hide inactive tabs`：隐藏主编辑区中的非活跃原生标签页标题。
 - `Layout style`：选择 list 或 card 布局。
 - `Show file icons`：切换标签页面板中的文件图标。
 - `Card width`：卡片最小宽度。
