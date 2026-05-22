@@ -192,51 +192,15 @@ button.just-tabs-toolbar-button {
 }
 
 .just-tabs-group-separator {
-    background: var(--background-modifier-border);
-    height: 1px;
-    margin: 5px 4px;
+    background: var(--interactive-accent);
+    border-radius: 999px;
+    height: 2px;
+    margin: 7px 8px;
+    opacity: 0.38;
 }
 
-.just-tabs-group-drop-zone {
-    border-radius: 4px;
-    display: none;
-    flex: 0 0 18px;
-    min-height: 18px;
-    margin: 1px 4px;
-}
-
-.just-tabs-root.is-dragging .just-tabs-group-drop-zone {
-    display: block;
-}
-
-.just-tabs-group-drop-zone.is-drag-over {
-    background: var(--background-modifier-hover);
-    outline: 1px solid var(--interactive-accent);
-}
-
-.just-tabs-group-drop-zone.is-tail {
-    flex: 1 0 56px;
-    min-height: 56px;
-}
-
-body.just-tabs-layout-card .just-tabs-group-drop-zone {
-    box-sizing: border-box;
-    flex: initial;
-    height: var(--just-tabs-card-height, 56px);
-    margin: 0;
-    min-height: var(--just-tabs-card-height, 56px);
-}
-
-body.just-tabs-layout-card .just-tabs-group-drop-zone.is-tail {
-    grid-column: 1 / -1;
-    height: auto;
-    min-height: 56px;
-}
-
-body.just-tabs-layout-card .just-tabs-group-drop-zone.is-drag-over {
-    background: var(--background-modifier-hover);
-    border: 1px dashed var(--interactive-accent);
-    outline: none;
+.just-tabs-group-separator.is-drag-over {
+    opacity: 0.9;
 }
 
 .just-tabs-icon {
