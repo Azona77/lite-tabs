@@ -1,26 +1,26 @@
 import { Plugin, WorkspaceLeaf, addIcon } from "obsidian";
-import { JustTabsView } from "./JustTabsView";
-import { DEFAULT_SETTINGS, JustTabsSettingTab, JustTabsSettings } from "./settings";
-import { JUST_TABS_VIEW_TYPE } from "./tabs";
+import { LiteTabsView } from "./LiteTabsView";
+import { DEFAULT_SETTINGS, LiteTabsSettingTab, LiteTabsSettings } from "./settings";
+import { LITE_TABS_VIEW_TYPE } from "./tabs";
 
-const JUST_TABS_ICON = `
+const LITE_TABS_ICON = `
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
 	<rect x="16" y="18" width="68" height="12" rx="4" fill="currentColor"/>
 	<rect x="16" y="44" width="68" height="12" rx="4" fill="currentColor"/>
 	<rect x="16" y="70" width="68" height="12" rx="4" fill="currentColor"/>
 </svg>`;
 
-export default class JustTabsPlugin extends Plugin {
-	settings: JustTabsSettings = DEFAULT_SETTINGS;
+export default class LiteTabsPlugin extends Plugin {
+	settings: LiteTabsSettings = DEFAULT_SETTINGS;
 
 	async onload(): Promise<void> {
-		addIcon("just-tabs", JUST_TABS_ICON);
+		addIcon("lite-tabs", LITE_TABS_ICON);
 		await this.loadSettings();
 		this.applySettings();
 
 		this.registerView(
-			JUST_TABS_VIEW_TYPE,
-			(leaf) => new JustTabsView(leaf, this)
+			LITE_TABS_VIEW_TYPE,
+			(leaf) => new LiteTabsView(leaf, this)
 		);
 
 		this.registerEvent(
@@ -45,17 +45,17 @@ export default class JustTabsPlugin extends Plugin {
 		);
 
 		this.addCommand({
-			id: "open-just-tabs",
-			name: "Open Just Tabs",
+			id: "open-lite-tabs",
+			name: "Open Lite Tabs",
 			callback: () => this.openView(),
 		});
 		this.addCommand({
-			id: "refresh-just-tabs",
-			name: "Refresh Just Tabs panel",
+			id: "refresh-lite-tabs",
+			name: "Refresh Lite Tabs panel",
 			callback: () => this.refreshViews(true),
 		});
 
-		this.addSettingTab(new JustTabsSettingTab(this.app, this));
+		this.addSettingTab(new LiteTabsSettingTab(this.app, this));
 
 		this.app.workspace.onLayoutReady(() => {
 			this.openView(false);
@@ -63,13 +63,13 @@ export default class JustTabsPlugin extends Plugin {
 	}
 
 	onunload(): void {
-		document.body.removeClass("just-tabs-hide-native");
-		document.body.removeClass("just-tabs-layout-card");
-		document.body.removeClass("just-tabs-layout-list");
-		document.body.removeClass("just-tabs-hide-icons");
-		document.body.removeClass("just-tabs-hide-toolbar");
-		document.body.removeClass("just-tabs-active-background");
-		document.body.removeClass("just-tabs-active-border");
+		document.body.removeClass("lite-tabs-hide-native");
+		document.body.removeClass("lite-tabs-layout-card");
+		document.body.removeClass("lite-tabs-layout-list");
+		document.body.removeClass("lite-tabs-hide-icons");
+		document.body.removeClass("lite-tabs-hide-toolbar");
+		document.body.removeClass("lite-tabs-active-background");
+		document.body.removeClass("lite-tabs-active-border");
 		this.clearStyleVariables();
 	}
 
@@ -87,68 +87,68 @@ export default class JustTabsPlugin extends Plugin {
 
 	applySettings(): void {
 		document.body.toggleClass(
-			"just-tabs-hide-native",
+			"lite-tabs-hide-native",
 			this.settings.hideNativeTabs
 		);
 		document.body.toggleClass(
-			"just-tabs-layout-card",
+			"lite-tabs-layout-card",
 			this.settings.layoutStyle === "card"
 		);
 		document.body.toggleClass(
-			"just-tabs-layout-list",
+			"lite-tabs-layout-list",
 			this.settings.layoutStyle === "list"
 		);
 		document.body.toggleClass(
-			"just-tabs-hide-icons",
+			"lite-tabs-hide-icons",
 			!this.settings.showIcons
 		);
 		document.body.toggleClass(
-			"just-tabs-hide-toolbar",
+			"lite-tabs-hide-toolbar",
 			this.settings.hideToolbar
 		);
 		document.body.toggleClass(
-			"just-tabs-active-background",
+			"lite-tabs-active-background",
 			this.settings.activeTabBackground
 		);
 		document.body.toggleClass(
-			"just-tabs-active-border",
+			"lite-tabs-active-border",
 			this.settings.activeTabBorder
 		);
 		this.setPixelVariable(
-			"--just-tabs-separator-thickness",
+			"--lite-tabs-separator-thickness",
 			this.settings.separatorThickness
 		);
 		this.setPixelVariable(
-			"--just-tabs-separator-margin-y",
+			"--lite-tabs-separator-margin-y",
 			this.settings.separatorMarginY
 		);
 		this.setPixelVariable(
-			"--just-tabs-separator-margin-x",
+			"--lite-tabs-separator-margin-x",
 			this.settings.separatorMarginX
 		);
 		this.setPixelVariable(
-			"--just-tabs-list-item-height",
+			"--lite-tabs-list-item-height",
 			this.settings.listItemHeight
 		);
 		this.setPixelVariable(
-			"--just-tabs-list-font-size",
+			"--lite-tabs-list-font-size",
 			this.settings.listFontSize
 		);
 		document.body.style.setProperty(
-			"--just-tabs-card-width",
+			"--lite-tabs-card-width",
 			`${this.settings.cardWidth}px`
 		);
 		document.body.style.setProperty(
-			"--just-tabs-card-height",
+			"--lite-tabs-card-height",
 			`${this.settings.cardHeight}px`
 		);
 		this.setPixelVariable(
-			"--just-tabs-card-font-size",
+			"--lite-tabs-card-font-size",
 			this.settings.cardFontSize
 		);
-		this.setPixelVariable("--just-tabs-card-gap", this.settings.cardGap);
+		this.setPixelVariable("--lite-tabs-card-gap", this.settings.cardGap);
 		document.body.style.setProperty(
-			"--just-tabs-active-background-strength",
+			"--lite-tabs-active-background-strength",
 			`${this.settings.activeTabEmphasis}%`
 		);
 	}
@@ -159,16 +159,16 @@ export default class JustTabsPlugin extends Plugin {
 
 	private clearStyleVariables(): void {
 		for (const property of [
-			"--just-tabs-separator-thickness",
-			"--just-tabs-separator-margin-y",
-			"--just-tabs-separator-margin-x",
-			"--just-tabs-list-item-height",
-			"--just-tabs-list-font-size",
-			"--just-tabs-card-width",
-			"--just-tabs-card-height",
-			"--just-tabs-card-font-size",
-			"--just-tabs-card-gap",
-			"--just-tabs-active-background-strength",
+			"--lite-tabs-separator-thickness",
+			"--lite-tabs-separator-margin-y",
+			"--lite-tabs-separator-margin-x",
+			"--lite-tabs-list-item-height",
+			"--lite-tabs-list-font-size",
+			"--lite-tabs-card-width",
+			"--lite-tabs-card-height",
+			"--lite-tabs-card-font-size",
+			"--lite-tabs-card-gap",
+			"--lite-tabs-active-background-strength",
 		]) {
 			document.body.style.removeProperty(property);
 		}
@@ -176,10 +176,10 @@ export default class JustTabsPlugin extends Plugin {
 
 	async openView(reveal = true): Promise<void> {
 		const existing = this.app.workspace.getLeavesOfType(
-			JUST_TABS_VIEW_TYPE
+			LITE_TABS_VIEW_TYPE
 		)[0];
 		const leaf = existing ?? this.app.workspace.getLeftLeaf(false);
-		await leaf.setViewState({ type: JUST_TABS_VIEW_TYPE, active: true });
+		await leaf.setViewState({ type: LITE_TABS_VIEW_TYPE, active: true });
 		if (reveal) {
 			this.app.workspace.revealLeaf(leaf);
 		}
@@ -201,10 +201,10 @@ export default class JustTabsPlugin extends Plugin {
 		}
 	}
 
-	private getViews(): JustTabsView[] {
+	private getViews(): LiteTabsView[] {
 		return this.app.workspace
-			.getLeavesOfType(JUST_TABS_VIEW_TYPE)
+			.getLeavesOfType(LITE_TABS_VIEW_TYPE)
 			.map((leaf: WorkspaceLeaf) => leaf.view)
-			.filter((view): view is JustTabsView => view instanceof JustTabsView);
+			.filter((view): view is LiteTabsView => view instanceof LiteTabsView);
 	}
 }

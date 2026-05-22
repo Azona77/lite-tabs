@@ -5,9 +5,9 @@ import {
 	SliderComponent,
 	TextComponent,
 } from "obsidian";
-import JustTabsPlugin from "./main";
+import LiteTabsPlugin from "./main";
 
-export interface JustTabsSettings {
+export interface LiteTabsSettings {
 	hideNativeTabs: boolean;
 	hideToolbar: boolean;
 	layoutStyle: "list" | "card";
@@ -26,7 +26,7 @@ export interface JustTabsSettings {
 	activeTabBorder: boolean;
 }
 
-export const DEFAULT_SETTINGS: JustTabsSettings = {
+export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
 	hideToolbar: false,
 	layoutStyle: "list",
@@ -46,15 +46,15 @@ export const DEFAULT_SETTINGS: JustTabsSettings = {
 };
 
 type NumericSettingKey = {
-	[K in keyof JustTabsSettings]: JustTabsSettings[K] extends number
+	[K in keyof LiteTabsSettings]: LiteTabsSettings[K] extends number
 		? K
 		: never;
-}[keyof JustTabsSettings];
+}[keyof LiteTabsSettings];
 
-export class JustTabsSettingTab extends PluginSettingTab {
-	private plugin: JustTabsPlugin;
+export class LiteTabsSettingTab extends PluginSettingTab {
+	private plugin: LiteTabsPlugin;
 
-	constructor(app: App, plugin: JustTabsPlugin) {
+	constructor(app: App, plugin: LiteTabsPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -78,7 +78,7 @@ export class JustTabsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Layout style")
-			.setDesc("Choose how tabs are presented in the Just Tabs panel.")
+			.setDesc("Choose how tabs are presented in the Lite Tabs panel.")
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOption("list", "List")
@@ -108,7 +108,7 @@ export class JustTabsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Hide toolbar")
-			.setDesc("Hide the Just Tabs panel toolbar for a more compact panel.")
+			.setDesc("Hide the Lite Tabs panel toolbar for a more compact panel.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.hideToolbar)

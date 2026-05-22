@@ -1,5 +1,5 @@
 import { Menu, WorkspaceLeaf, setIcon } from "obsidian";
-import JustTabsPlugin from "./main";
+import LiteTabsPlugin from "./main";
 import {
 	TabItem,
 	closeOtherLeavesInGroup,
@@ -23,7 +23,7 @@ interface RowRecord {
 }
 
 export class TabController {
-	private plugin: JustTabsPlugin;
+	private plugin: LiteTabsPlugin;
 	private rootEl: HTMLElement;
 	private toolbarEl: HTMLElement;
 	private listButtonEl: HTMLButtonElement;
@@ -50,17 +50,17 @@ export class TabController {
 	private indicatorKey: string | null = null;
 	private indicatorTargetKey: string | null = null;
 
-	constructor(plugin: JustTabsPlugin, containerEl: HTMLElement) {
+	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
 		containerEl.empty();
-		this.rootEl = containerEl.createDiv({ cls: "just-tabs-root" });
-		this.toolbarEl = this.rootEl.createDiv({ cls: "just-tabs-toolbar" });
+		this.rootEl = containerEl.createDiv({ cls: "lite-tabs-root" });
+		this.toolbarEl = this.rootEl.createDiv({ cls: "lite-tabs-toolbar" });
 		this.listButtonEl = this.createLayoutButton("list", "List view");
 		this.cardButtonEl = this.createLayoutButton("card", "Card view");
 		this.iconButtonEl = this.createIconButton();
 		this.inactiveTabsButtonEl = this.createInactiveTabsButton();
 		this.refreshButtonEl = this.createRefreshButton();
-		this.listEl = this.rootEl.createDiv({ cls: "just-tabs-list" });
+		this.listEl = this.rootEl.createDiv({ cls: "lite-tabs-list" });
 		this.listEl.addEventListener("dragover", (event) => {
 			this.handleListDragOver(event);
 		});
@@ -68,11 +68,11 @@ export class TabController {
 			this.handleListDrop(event);
 		});
 		this.emptyEl = this.listEl.createDiv({
-			cls: "just-tabs-empty",
+			cls: "lite-tabs-empty",
 			text: "No open tabs",
 		});
 		this.dropIndicatorEl = this.listEl.createDiv({
-			cls: "just-tabs-drop-indicator",
+			cls: "lite-tabs-drop-indicator",
 		});
 		this.syncLayoutButtons();
 		this.syncIconButton();
@@ -136,7 +136,7 @@ export class TabController {
 		this.lastGroupEndId = null;
 		this.groupSeparators = [];
 		this.listEl
-			.querySelectorAll(".just-tabs-group-separator")
+			.querySelectorAll(".lite-tabs-group-separator")
 			.forEach((el) => el.remove());
 
 		let previousParentId: string | null = null;
@@ -215,13 +215,13 @@ export class TabController {
 	}
 
 	private createRow(item: TabItem): RowRecord {
-		const el = createDiv({ cls: "just-tabs-item" });
+		const el = createDiv({ cls: "lite-tabs-item" });
 		el.dataset.leafId = item.id;
 		el.draggable = true;
 
-		const iconEl = el.createDiv({ cls: "just-tabs-icon" });
-		const titleEl = el.createDiv({ cls: "just-tabs-title" });
-		const closeEl = el.createDiv({ cls: "just-tabs-close" });
+		const iconEl = el.createDiv({ cls: "lite-tabs-icon" });
+		const titleEl = el.createDiv({ cls: "lite-tabs-title" });
+		const closeEl = el.createDiv({ cls: "lite-tabs-close" });
 		iconEl.draggable = true;
 		titleEl.draggable = true;
 		closeEl.draggable = false;
@@ -239,7 +239,7 @@ export class TabController {
 			this.dragSourceEl = el;
 		});
 		el.addEventListener("click", (event) => {
-			if ((event.target as HTMLElement).closest(".just-tabs-close")) {
+			if ((event.target as HTMLElement).closest(".lite-tabs-close")) {
 				this.closeLeaf(item.leaf);
 				return;
 			}
@@ -303,7 +303,7 @@ export class TabController {
 		label: string
 	): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
-			cls: "just-tabs-layout-button",
+			cls: "lite-tabs-layout-button",
 			attr: {
 				"aria-label": label,
 				title: label,
@@ -329,7 +329,7 @@ export class TabController {
 
 	private createIconButton(): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
-			cls: "just-tabs-toolbar-button",
+			cls: "lite-tabs-toolbar-button",
 			attr: {
 				"aria-label": "Toggle file icons",
 				title: "Toggle file icons",
@@ -352,7 +352,7 @@ export class TabController {
 
 	private createInactiveTabsButton(): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
-			cls: "just-tabs-toolbar-button",
+			cls: "lite-tabs-toolbar-button",
 			attr: {
 				"aria-label": "Hide inactive tabs",
 				title: "Hide inactive tabs",
@@ -376,10 +376,10 @@ export class TabController {
 
 	private createRefreshButton(): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
-			cls: "just-tabs-toolbar-button",
+			cls: "lite-tabs-toolbar-button",
 			attr: {
-				"aria-label": "Refresh Just Tabs",
-				title: "Refresh Just Tabs",
+				"aria-label": "Refresh Lite Tabs",
+				title: "Refresh Lite Tabs",
 			},
 		});
 		setIcon(button, "refresh-cw");
@@ -390,7 +390,7 @@ export class TabController {
 	}
 
 	private createGroupSeparator(): HTMLElement {
-		return createDiv({ cls: "just-tabs-group-separator" });
+		return createDiv({ cls: "lite-tabs-group-separator" });
 	}
 
 	private getCardColumnCount(): number {
@@ -572,7 +572,7 @@ export class TabController {
 	private getEventRow(event: DragEvent): HTMLElement | null {
 		const target = event.target;
 		if (target instanceof HTMLElement) {
-			const row = target.closest(".just-tabs-item");
+			const row = target.closest(".lite-tabs-item");
 			if (row instanceof HTMLElement) return row;
 		}
 		return this.getRowAtPoint(event.clientX, event.clientY);
@@ -667,7 +667,7 @@ export class TabController {
 
 	private isInsideDropTarget(target: EventTarget | null): boolean {
 		if (!(target instanceof HTMLElement)) return false;
-		return !!target.closest(".just-tabs-item, .just-tabs-group-separator");
+		return !!target.closest(".lite-tabs-item, .lite-tabs-group-separator");
 	}
 
 	private clearAllDragState(): void {
