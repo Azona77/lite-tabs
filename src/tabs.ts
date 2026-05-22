@@ -49,6 +49,11 @@ function getActiveLeaf(app: App): WorkspaceLeaf | null {
 	return activeView?.leaf ?? null;
 }
 
+export function getActiveTabId(app: App): string | null {
+	const activeLeaf = getActiveLeaf(app);
+	return activeLeaf ? getLeafId(activeLeaf) : null;
+}
+
 function getParentId(leaf: WorkspaceLeaf): string {
 	return asRuntimeLeaf(leaf).parent?.id ?? "";
 }
@@ -69,17 +74,19 @@ function iterateMainLeaves(app: App, callback: (leaf: WorkspaceLeaf) => void) {
 
 export function collectTabs(app: App): TabItem[] {
 	const activeLeaf = getActiveLeaf(app);
+	const activeId = activeLeaf ? getLeafId(activeLeaf) : null;
 	const items: TabItem[] = [];
 
 	iterateMainLeaves(app, (leaf) => {
+		const id = getLeafId(leaf);
 		if (leaf.getViewState().type === JUST_TABS_VIEW_TYPE) return;
 		items.push({
-			id: getLeafId(leaf),
+			id,
 			leaf,
 			title: leaf.getDisplayText(),
 			icon: leaf.getIcon(),
 			parentId: getParentId(leaf),
-			active: !!activeLeaf && getLeafId(activeLeaf) === getLeafId(leaf),
+			active: activeId === id,
 		});
 	});
 

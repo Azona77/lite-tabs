@@ -49,6 +49,11 @@ export default class JustTabsPlugin extends Plugin {
 			name: "Open Just Tabs",
 			callback: () => this.openView(),
 		});
+		this.addCommand({
+			id: "refresh-just-tabs",
+			name: "Refresh Just Tabs panel",
+			callback: () => this.refreshViews(true),
+		});
 
 		this.addSettingTab(new JustTabsSettingTab(this.app, this));
 
@@ -116,9 +121,13 @@ export default class JustTabsPlugin extends Plugin {
 		}
 	}
 
-	refreshViews(): void {
+	refreshViews(force = false): void {
 		for (const view of this.getViews()) {
-			view.scheduleRefresh();
+			if (force) {
+				view.forceRefresh();
+			} else {
+				view.scheduleRefresh();
+			}
 		}
 	}
 

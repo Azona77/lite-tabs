@@ -4,6 +4,7 @@ import {
 	TabItem,
 	closeOtherLeavesInGroup,
 	collectTabs,
+	getActiveTabId,
 	getLeafId,
 	moveLeafRelative,
 	renderIcon,
@@ -15,6 +16,10 @@ interface RowRecord {
 	iconEl: HTMLElement;
 	titleEl: HTMLElement;
 	closeEl: HTMLElement;
+	renderedTitle: string;
+	renderedIcon: string;
+	renderedParentId: string;
+	active: boolean;
 }
 
 export class TabController {
@@ -24,10 +29,12 @@ export class TabController {
 	private listButtonEl: HTMLButtonElement;
 	private cardButtonEl: HTMLButtonElement;
 	private iconButtonEl: HTMLButtonElement;
+	private refreshButtonEl: HTMLButtonElement;
 	private listEl: HTMLElement;
 	private emptyEl: HTMLElement;
 	private rows = new Map<string, RowRecord>();
 	private orderedIds: string[] = [];
+	private structureSignature: string | null = null;
 	private frame: number | null = null;
 	private activeId: string | null = null;
 	private draggedId: string | null = null;
@@ -42,6 +49,7 @@ export class TabController {
 		this.listButtonEl = this.createLayoutButton("list", "List view");
 		this.cardButtonEl = this.createLayoutButton("card", "Card view");
 		this.iconButtonEl = this.createIconButton();
+		this.refreshButtonEl = this.createRefreshButton();
 		this.listEl = this.rootEl.createDiv({ cls: "just-tabs-list" });
 		this.emptyEl = this.listEl.createDiv({
 			cls: "just-tabs-empty",
@@ -68,8 +76,22 @@ export class TabController {
 		});
 	}
 
-	refreshStructure(): void {
+	forceRefresh(): void {
+		if (this.frame !== null) {
+			cancelAnimationFrame(this.frame);
+			this.frame = null;
+		}
+		this.structureSignature = null;
+		this.refreshStructure(true);
+	}
+
+	refreshStructure(force = false): void {
 		const items = collectTabs(this.plugin.app);
+		const nextSignature = this.getStructureSignature(items);
+		if (!force && nextSignature === this.structureSignature) {
+			this.syncActive();
+			return;
+		}
 		const nextIds = items.map((item) => item.id);
 		const nextIdSet = new Set(nextIds);
 		const itemsById = new Map(items.map((item) => [item.id, item]));
@@ -123,23 +145,46 @@ export class TabController {
 		}
 
 		this.orderedIds = nextIds;
+		this.structureSignature = nextSignature;
 		this.emptyEl.toggle(items.length === 0);
 		this.syncActive(items);
 		this.syncLayoutButtons();
 		this.syncIconButton();
 	}
 
-	syncActive(items = collectTabs(this.plugin.app)): void {
-		const active = items.find((item) => item.active)?.id ?? null;
+	syncActive(items?: TabItem[]): void {
+		const active = items
+			? items.find((item) => item.active)?.id ?? null
+			: getActiveTabId(this.plugin.app);
 		if (active === this.activeId) return;
 
 		if (this.activeId) {
-			this.rows.get(this.activeId)?.el.toggleClass("is-active", false);
+			const row = this.rows.get(this.activeId);
+			row?.el.toggleClass("is-active", false);
+			if (row) row.active = false;
 		}
 		if (active) {
-			this.rows.get(active)?.el.toggleClass("is-active", true);
+			const row = this.rows.get(active);
+			row?.el.toggleClass("is-active", true);
+			if (row) row.active = true;
 		}
 		this.activeId = active;
+	}
+
+	private getStructureSignature(items: TabItem[]): string {
+		return `${this.getLayoutSignature()}|${items
+			.map(
+				(item) =>
+					`${item.id}\u001f${item.parentId}\u001f${item.title}\u001f${item.icon}`
+			)
+			.join("\u001e")}`;
+	}
+
+	private getLayoutSignature(): string {
+		if (this.plugin.settings.layoutStyle !== "card") {
+			return "list";
+		}
+		return `card:${this.getCardColumnCount()}`;
 	}
 
 	private createRow(item: TabItem): RowRecord {
@@ -208,7 +253,17 @@ export class TabController {
 			this.clearAllDragState();
 		});
 
-		const row = { item, el, iconEl, titleEl, closeEl };
+		const row = {
+			item,
+			el,
+			iconEl,
+			titleEl,
+			closeEl,
+			renderedTitle: "",
+			renderedIcon: "",
+			renderedParentId: "",
+			active: false,
+		};
 		this.updateRow(row, item);
 		return row;
 	}
@@ -229,6 +284,7 @@ export class TabController {
 			if (this.plugin.settings.layoutStyle === style) return;
 			this.plugin.settings.layoutStyle = style;
 			this.plugin.applySettings();
+			this.forceRefresh();
 			this.syncLayoutButtons();
 			await this.plugin.saveSettings();
 		});
@@ -264,6 +320,21 @@ export class TabController {
 		setIcon(this.iconButtonEl, showIcons ? "file" : "file-x");
 	}
 
+	private createRefreshButton(): HTMLButtonElement {
+		const button = this.toolbarEl.createEl("button", {
+			cls: "just-tabs-toolbar-button",
+			attr: {
+				"aria-label": "Refresh Just Tabs",
+				title: "Refresh Just Tabs",
+			},
+		});
+		setIcon(button, "refresh-cw");
+		button.addEventListener("click", () => {
+			this.forceRefresh();
+		});
+		return button;
+	}
+
 	private createGroupSeparator(): HTMLElement {
 		return createDiv({ cls: "just-tabs-group-separator" });
 	}
@@ -277,12 +348,16 @@ export class TabController {
 
 	private getGroupDropZoneCount(groupItemCount: number): number {
 		if (this.plugin.settings.layoutStyle !== "card") return 1;
-		const columns = getComputedStyle(this.listEl)
-			.gridTemplateColumns.split(" ")
-			.filter(Boolean).length;
+		const columns = this.getCardColumnCount();
 		if (columns <= 1) return 1;
 		const remainder = groupItemCount % columns;
 		return remainder === 0 ? 1 : columns - remainder;
+	}
+
+	private getCardColumnCount(): number {
+		return getComputedStyle(this.listEl)
+			.gridTemplateColumns.split(" ")
+			.filter(Boolean).length;
 	}
 
 	private createGroupDropZone(item: TabItem): HTMLElement {
@@ -361,11 +436,23 @@ export class TabController {
 
 	private updateRow(row: RowRecord, item: TabItem): void {
 		row.item = item;
-		row.titleEl.setText(item.title);
-		row.el.title = item.title;
-		row.el.dataset.parentId = item.parentId;
-		row.el.toggleClass("is-active", item.active);
-		renderIcon(row.iconEl, item.icon);
+		if (row.renderedTitle !== item.title) {
+			row.titleEl.setText(item.title);
+			row.el.title = item.title;
+			row.renderedTitle = item.title;
+		}
+		if (row.renderedParentId !== item.parentId) {
+			row.el.dataset.parentId = item.parentId;
+			row.renderedParentId = item.parentId;
+		}
+		if (row.active !== item.active) {
+			row.el.toggleClass("is-active", item.active);
+			row.active = item.active;
+		}
+		if (row.renderedIcon !== item.icon) {
+			renderIcon(row.iconEl, item.icon);
+			row.renderedIcon = item.icon;
+		}
 	}
 
 	private activateLeaf(leaf: WorkspaceLeaf): void {

@@ -54,6 +54,7 @@ export class JustTabsSettingTab extends PluginSettingTab {
 						this.plugin.settings.layoutStyle =
 							value === "card" ? "card" : "list";
 						this.plugin.applySettings();
+						this.plugin.refreshViews(true);
 						await this.plugin.saveSettings();
 					});
 			});
@@ -82,6 +83,7 @@ export class JustTabsSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.cardWidth = value;
 						this.plugin.applySettings();
+						this.plugin.refreshViews(true);
 						await this.plugin.saveSettings();
 					});
 			});

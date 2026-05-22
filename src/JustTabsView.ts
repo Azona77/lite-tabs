@@ -36,6 +36,10 @@ export class JustTabsView extends ItemView {
 		this.controller?.refreshStructure();
 	}
 
+	forceRefresh(): void {
+		this.controller?.forceRefresh();
+	}
+
 	scheduleRefresh(): void {
 		this.controller?.scheduleRefresh();
 	}
