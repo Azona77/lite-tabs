@@ -2,37 +2,32 @@
 
 English | [中文](#中文)
 
-Just Tabs is a lightweight Obsidian plugin that shows open editor tabs in an independent sidebar panel. It is built as a compact replacement for Obsidian's crowded single-line tab strip, with a focus on fast switching and low runtime overhead.
+Just Tabs is a lightweight Obsidian plugin that displays the tabs currently open in the editor area in a independent sidebar panel, with a focus on fast switching and low runtime overhead.
 
 ## Features
 
-- Independent sidebar panel for editor tabs.
-- Vertical list view for dense scanning.
-- Card view with configurable width, height, gap, and font size.
-- Same-group and cross-group drag sorting.
-- Drop to a group's empty end area to move a tab to the end.
-- Click to activate, middle click or close button to close.
-- Minimal context menu: close, close others in the same group.
-- Optional file icons, toolbar hiding, and inactive native tab hiding.
-- Manual refresh command and toolbar button.
+- Vertical list or card-style tab view.
+- Click to activate a tab, middle-click or use the close button to close a tab, and drag to reorder tabs.
+- Minimal display options: hide file icons, toolbar, or inactive tabs.
+- Customizable styles: size of the vertical list or card view, font size, divider size, and basic highlight style.
 
 ## Performance
 
-- Event-driven updates, no polling loop.
-- Refreshes are coalesced with `requestAnimationFrame`.
-- Existing row elements are reused when possible.
-- Active-tab changes only update active row classes.
-- No persistent tab cache or editable group-title synchronization.
+- Event-driven updates with no polling.
+- Uses `requestAnimationFrame` to batch refreshes.
+- Reuses existing item DOM elements whenever possible.
+- Updates only the active-state class when the active tab changes.
+- Does not maintain large persistent caches or synchronize custom group titles.
 
 ## Installation
 
-Download `main.js`, `manifest.json`, and `styles.css` from a release, then place them in:
+Download `main.js`, `manifest.json`, and `styles.css` from the release, then place them in:
 
 ```text
-Vault/.obsidian/plugins/obsidian-just-tabs/
+Vault/.obsidian/plugins/just-tabs/
 ```
 
-Reload Obsidian and enable `Just Tabs` in community plugins.
+Restart Obsidian and enable `Just Tabs` under Community Plugins.
 
 ## Build
 
@@ -41,40 +36,23 @@ npm install
 npm run build
 ```
 
-The production build writes `main.js` to the repository root.
+The production build outputs `main.js` to the repository root.
 
 ## Commands
 
-- `Open Just Tabs`: open or reveal the Just Tabs panel.
-- `Refresh Just Tabs panel`: rebuild the panel from the current workspace state.
-
-## Notes
-
-`Hide inactive tabs` is disabled by default because it changes Obsidian's native tab strip. Enable it only if you want Just Tabs to visually replace inactive native tab headers in the main editor area.
-
-Persistent editable group titles are intentionally not included. Obsidian workspace groups are runtime layout structures, and storing custom names for them would add synchronization cost.
-
-## License
-
-MIT
-
----
+- `Open Just Tabs`: Open or reveal the Just Tabs panel.
+- `Refresh Just Tabs panel`: Rebuild the panel based on the current workspace state.
 
 # 中文
 
-Just Tabs 是一个轻量级 Obsidian 插件，用独立侧边栏面板展示当前编辑区打开的标签页。它的目标是替代拥挤的原生单行标签栏，同时保持快速切换和低运行开销。
+Just Tabs 是一个轻量级 Obsidian 插件，用独立侧边栏面板展示当前编辑区打开的标签页，保持低运行开销。
 
 ## 功能
 
-- 独立侧边栏标签页面板。
-- 适合快速检索的垂直列表视图。
-- 卡片视图，支持配置宽度、高度、间距和字体大小。
-- 支持同组和跨组拖动排序。
-- 拖到分组末尾空白区域可移动到该组末尾。
-- 单击激活，中键或关闭按钮关闭。
-- 精简右键菜单：关闭、关闭同组其他标签页。
-- 可选文件图标、隐藏工具栏、隐藏非活跃原生标签页。
-- 提供手动刷新命令和工具栏按钮。
+- 垂直列表/卡片标签页视图。
+- 单击激活，中键或关闭按钮关闭，拖动排序。
+- 精简样式选项：隐藏文件图标、工具栏、非活跃标签页。
+- 自定义样式：垂直列表/卡片视图尺寸、字体、分割线尺寸、基础高亮样式
 
 ## 性能
 
@@ -89,7 +67,7 @@ Just Tabs 是一个轻量级 Obsidian 插件，用独立侧边栏面板展示当
 从 release 下载 `main.js`、`manifest.json` 和 `styles.css`，放入：
 
 ```text
-Vault/.obsidian/plugins/obsidian-just-tabs/
+Vault/.obsidian/plugins/just-tabs/
 ```
 
 重启 Obsidian 后，在第三方插件中启用 `Just Tabs`。
@@ -103,17 +81,7 @@ npm run build
 
 生产构建会把 `main.js` 输出到仓库根目录。
 
-## 命令
+## 插件命令
 
 - `Open Just Tabs`：打开或显示 Just Tabs 面板。
 - `Refresh Just Tabs panel`：根据当前工作区状态重建面板。
-
-## 说明
-
-`Hide inactive tabs` 默认关闭，因为它会改变 Obsidian 原生标签栏的显示方式。只有在希望 Just Tabs 视觉上替代主编辑区非活跃原生标签页时再开启。
-
-插件刻意不实现持久化的可编辑分组标题。Obsidian 的 workspace group 是运行时布局结构，额外存储自定义名称会增加同步成本。
-
-## 许可证
-
-MIT

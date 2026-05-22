@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-just-tabs",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "A lightweight Obsidian tab panel focused on fast native-tab replacement.",
 	"main": "main.js",
 	"scripts": {
@@ -15,7 +15,6 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^20.11.30",
-		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.25.0",
 		"obsidian": "^1.11.0",
 		"tslib": "^2.6.2",
