@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: JustTabsSettings = {
 	separatorMarginX: 8,
 	listItemHeight: 30,
 	listFontSize: 13,
-	cardWidth: 180,
+	cardWidth: 120,
 	cardHeight: 56,
 	cardFontSize: 13,
 	cardGap: 6,
