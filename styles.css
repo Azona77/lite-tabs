@@ -7,7 +7,7 @@ body.just-tabs-hide-native
 
 body.just-tabs-layout-card .just-tabs-list {
     display: grid;
-    gap: 6px;
+    gap: var(--just-tabs-card-gap, 6px);
     grid-template-columns: repeat(
         auto-fill,
         minmax(min(100%, var(--just-tabs-card-width, 180px)), 1fr)
@@ -29,7 +29,7 @@ body.just-tabs-layout-card .just-tabs-item {
 }
 
 body.just-tabs-layout-card .just-tabs-title {
-    font-size: var(--font-ui-medium);
+    font-size: var(--just-tabs-card-font-size, 13px);
     line-height: 1.35;
     overflow: hidden;
     overflow-wrap: anywhere;
@@ -158,7 +158,8 @@ button.just-tabs-toolbar-button {
     display: grid;
     grid-template-columns: 18px minmax(0, 1fr) 22px;
     gap: 6px;
-    min-height: 30px;
+    font-size: var(--just-tabs-list-font-size, 13px);
+    min-height: var(--just-tabs-list-item-height, 30px);
     padding: 3px 5px;
     user-select: none;
 }
@@ -168,8 +169,20 @@ button.just-tabs-toolbar-button {
 }
 
 .just-tabs-item.is-active {
-    background: var(--background-modifier-active-hover);
     color: var(--text-accent);
+}
+
+body.just-tabs-active-background .just-tabs-item.is-active {
+    background: color-mix(
+        in srgb,
+        var(--interactive-accent)
+            var(--just-tabs-active-background-strength, 18%),
+        transparent
+    );
+}
+
+body.just-tabs-active-border .just-tabs-item.is-active {
+    box-shadow: inset 2px 0 0 var(--interactive-accent);
 }
 
 .just-tabs-item.is-drag-source {
@@ -194,8 +207,10 @@ button.just-tabs-toolbar-button {
 .just-tabs-group-separator {
     background: var(--interactive-accent);
     border-radius: 999px;
-    height: 2px;
-    margin: 7px 8px;
+    height: var(--just-tabs-separator-thickness, 2px);
+    margin: var(--just-tabs-separator-margin-y, 7px)
+        var(--just-tabs-separator-margin-x, 8px);
+    min-height: var(--just-tabs-separator-thickness, 2px);
     opacity: 0.38;
 }
 

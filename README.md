@@ -75,8 +75,18 @@ The production build writes `main.js` to the repository root. For a manual relea
 - `Hide inactive tabs`: hide inactive native tab headers in the main editor area.
 - `Layout style`: choose list or card layout.
 - `Show file icons`: toggle file icons in the tab panel.
+- `Separator thickness`: group separator thickness.
+- `Separator vertical margin`: vertical spacing around group separators.
+- `Separator horizontal margin`: horizontal inset for group separators.
+- `List item height`: minimum row height in list view.
+- `List font size`: title font size in list view.
 - `Card width`: minimum card width.
 - `Card height`: fixed card height. Overflowing title text is hidden.
+- `Card font size`: title font size in card view.
+- `Card gap`: spacing between cards.
+- `Active tab emphasis`: accent strength for active tab background.
+- `Active tab background`: toggle active tab accent background.
+- `Active tab border`: toggle active tab accent border.
 
 ## Notes
 
@@ -165,8 +175,18 @@ npm run build
 - `Hide inactive tabs`：隐藏主编辑区中的非活跃原生标签页标题。
 - `Layout style`：选择 list 或 card 布局。
 - `Show file icons`：切换标签页面板中的文件图标。
+- `Separator thickness`：分组分隔线厚度。
+- `Separator vertical margin`：分组分隔线垂直间距。
+- `Separator horizontal margin`：分组分隔线水平缩进。
+- `List item height`：列表视图标签最小高度。
+- `List font size`：列表视图标题字号。
 - `Card width`：卡片最小宽度。
 - `Card height`：卡片固定高度，超出高度的标题内容会被隐藏。
+- `Card font size`：卡片视图标题字号。
+- `Card gap`：卡片之间的间距。
+- `Active tab emphasis`：活动标签背景强调强度。
+- `Active tab background`：切换活动标签背景强调。
+- `Active tab border`：切换活动标签边框强调。
 
 ## 说明
 

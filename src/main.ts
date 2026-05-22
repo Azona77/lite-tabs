@@ -67,8 +67,9 @@ export default class JustTabsPlugin extends Plugin {
 		document.body.removeClass("just-tabs-layout-card");
 		document.body.removeClass("just-tabs-layout-list");
 		document.body.removeClass("just-tabs-hide-icons");
-		document.body.style.removeProperty("--just-tabs-card-width");
-		document.body.style.removeProperty("--just-tabs-card-height");
+		document.body.removeClass("just-tabs-active-background");
+		document.body.removeClass("just-tabs-active-border");
+		this.clearStyleVariables();
 	}
 
 	async loadSettings(): Promise<void> {
@@ -100,6 +101,34 @@ export default class JustTabsPlugin extends Plugin {
 			"just-tabs-hide-icons",
 			!this.settings.showIcons
 		);
+		document.body.toggleClass(
+			"just-tabs-active-background",
+			this.settings.activeTabBackground
+		);
+		document.body.toggleClass(
+			"just-tabs-active-border",
+			this.settings.activeTabBorder
+		);
+		this.setPixelVariable(
+			"--just-tabs-separator-thickness",
+			this.settings.separatorThickness
+		);
+		this.setPixelVariable(
+			"--just-tabs-separator-margin-y",
+			this.settings.separatorMarginY
+		);
+		this.setPixelVariable(
+			"--just-tabs-separator-margin-x",
+			this.settings.separatorMarginX
+		);
+		this.setPixelVariable(
+			"--just-tabs-list-item-height",
+			this.settings.listItemHeight
+		);
+		this.setPixelVariable(
+			"--just-tabs-list-font-size",
+			this.settings.listFontSize
+		);
 		document.body.style.setProperty(
 			"--just-tabs-card-width",
 			`${this.settings.cardWidth}px`
@@ -108,6 +137,36 @@ export default class JustTabsPlugin extends Plugin {
 			"--just-tabs-card-height",
 			`${this.settings.cardHeight}px`
 		);
+		this.setPixelVariable(
+			"--just-tabs-card-font-size",
+			this.settings.cardFontSize
+		);
+		this.setPixelVariable("--just-tabs-card-gap", this.settings.cardGap);
+		document.body.style.setProperty(
+			"--just-tabs-active-background-strength",
+			`${this.settings.activeTabEmphasis}%`
+		);
+	}
+
+	private setPixelVariable(name: string, value: number): void {
+		document.body.style.setProperty(name, `${value}px`);
+	}
+
+	private clearStyleVariables(): void {
+		for (const property of [
+			"--just-tabs-separator-thickness",
+			"--just-tabs-separator-margin-y",
+			"--just-tabs-separator-margin-x",
+			"--just-tabs-list-item-height",
+			"--just-tabs-list-font-size",
+			"--just-tabs-card-width",
+			"--just-tabs-card-height",
+			"--just-tabs-card-font-size",
+			"--just-tabs-card-gap",
+			"--just-tabs-active-background-strength",
+		]) {
+			document.body.style.removeProperty(property);
+		}
 	}
 
 	async openView(reveal = true): Promise<void> {
