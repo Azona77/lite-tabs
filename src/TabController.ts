@@ -45,6 +45,7 @@ export class TabController {
 	private dragOverId: string | null = null;
 	private dragOverZoneEl: HTMLElement | null = null;
 	private lastGroupEndId: string | null = null;
+	private groupSeparators: { endId: string; el: HTMLElement }[] = [];
 	private dropPosition: "before" | "after" = "before";
 	private indicatorKey: string | null = null;
 	private indicatorTargetKey: string | null = null;
@@ -133,13 +134,13 @@ export class TabController {
 		}
 
 		this.lastGroupEndId = null;
+		this.groupSeparators = [];
 		this.listEl
 			.querySelectorAll(".just-tabs-group-separator")
 			.forEach((el) => el.remove());
 
 		let previousParentId: string | null = null;
 		let previousItem: TabItem | null = null;
-		let groupItemCount = 0;
 		for (const id of nextIds) {
 			const row = this.rows.get(id);
 			const item = itemsById.get(id);
@@ -149,14 +150,17 @@ export class TabController {
 				item.parentId !== previousParentId
 			) {
 				if (previousItem) {
-					this.listEl.appendChild(this.createGroupSeparator(previousItem));
+					const separator = this.createGroupSeparator();
+					this.groupSeparators.push({
+						endId: previousItem.id,
+						el: separator,
+					});
+					this.listEl.appendChild(separator);
 				}
-				groupItemCount = 0;
 			}
 			if (row) this.listEl.appendChild(row.el);
 			previousParentId = item?.parentId ?? previousParentId;
 			previousItem = item ?? previousItem;
-			if (item) groupItemCount += 1;
 		}
 		if (previousItem) {
 			this.lastGroupEndId = previousItem.id;
@@ -385,18 +389,8 @@ export class TabController {
 		return button;
 	}
 
-	private createGroupSeparator(item: TabItem): HTMLElement {
-		const el = createDiv({ cls: "just-tabs-group-separator" });
-		el.addEventListener("dragover", (event) => {
-			if (!this.draggedId || this.draggedId === item.id) return;
-			event.preventDefault();
-			this.setGroupDropTarget(item.id, el);
-		});
-		el.addEventListener("drop", (event) => {
-			event.preventDefault();
-			this.dropAfterGroupEnd(item.id, event);
-		});
-		return el;
+	private createGroupSeparator(): HTMLElement {
+		return createDiv({ cls: "just-tabs-group-separator" });
 	}
 
 	private getCardColumnCount(): number {
@@ -456,16 +450,16 @@ export class TabController {
 		return { id, position };
 	}
 
-	private setGroupDropTarget(id: string, el: HTMLElement): void {
-		this.hideDropIndicator();
-		if (this.dragOverZoneEl !== el) {
-			this.clearGroupDropTarget();
-			el.toggleClass("is-drag-over", true);
-			this.dragOverZoneEl = el;
+	private setGroupDropTarget(id: string): void {
+		this.clearGroupDropTarget();
+		const targetRow = this.rows.get(id);
+		if (targetRow) {
+			this.showDropIndicator(targetRow.el, "after", `group:${id}`);
+		} else {
+			this.hideDropIndicator();
 		}
 		this.dragOverId = id;
 		this.dropPosition = "after";
-		this.indicatorTargetKey = null;
 	}
 
 	private clearGroupDropTarget(): void {
@@ -518,12 +512,15 @@ export class TabController {
 			this.setDropTarget(rowId, rowEl, event);
 			return;
 		}
+		const groupEndId = this.getGroupEndTargetAtPoint(event);
+		if (groupEndId && groupEndId !== this.draggedId) {
+			event.preventDefault();
+			this.setGroupDropTarget(groupEndId);
+			return;
+		}
 		if (!this.canDropAtListEnd(event)) return;
 		event.preventDefault();
-		this.setGroupDropTarget(
-			this.lastGroupEndId as string,
-			this.listEl
-		);
+		this.setGroupDropTarget(this.lastGroupEndId as string);
 	}
 
 	private handleListDrop(event: DragEvent): void {
@@ -532,6 +529,12 @@ export class TabController {
 		if (rowEl && rowId && this.draggedId && this.draggedId !== rowId) {
 			event.preventDefault();
 			this.dropOnRow(rowId, rowEl, event);
+			return;
+		}
+		const groupEndId = this.getGroupEndTargetAtPoint(event);
+		if (groupEndId && groupEndId !== this.draggedId) {
+			event.preventDefault();
+			this.dropAfterGroupEnd(groupEndId, event);
 			return;
 		}
 		if (!this.canDropAtListEnd(event)) return;
@@ -597,7 +600,69 @@ export class TabController {
 		if (this.isInsideDropTarget(event.target)) return false;
 		const lastRow = this.rows.get(this.lastGroupEndId);
 		if (!lastRow) return false;
-		return event.clientY >= lastRow.el.getBoundingClientRect().bottom;
+		const listRect = this.listEl.getBoundingClientRect();
+		if (
+			event.clientX < listRect.left ||
+			event.clientX > listRect.right ||
+			event.clientY < listRect.top ||
+			event.clientY > listRect.bottom
+		) {
+			return false;
+		}
+
+		const lastRect = lastRow.el.getBoundingClientRect();
+		if (event.clientY >= lastRect.bottom) return true;
+		return (
+			this.plugin.settings.layoutStyle === "card" &&
+			event.clientY >= lastRect.top &&
+			event.clientY < lastRect.bottom &&
+			event.clientX > lastRect.right
+		);
+	}
+
+	private getGroupEndTargetAtPoint(event: DragEvent): string | null {
+		if (!this.draggedId) return null;
+		if (this.isInsideDropTarget(event.target)) return null;
+
+		const listRect = this.listEl.getBoundingClientRect();
+		if (
+			event.clientX < listRect.left ||
+			event.clientX > listRect.right ||
+			event.clientY < listRect.top ||
+			event.clientY > listRect.bottom
+		) {
+			return null;
+		}
+
+		const isCardLayout = this.plugin.settings.layoutStyle === "card";
+		for (const { endId, el } of this.groupSeparators) {
+			const row = this.rows.get(endId);
+			if (!row) continue;
+
+			const rowRect = row.el.getBoundingClientRect();
+			const separatorRect = el.getBoundingClientRect();
+			if (
+				event.clientX >= separatorRect.left &&
+				event.clientX <= separatorRect.right &&
+				event.clientY >= separatorRect.top &&
+				event.clientY <= separatorRect.bottom
+			) {
+				return null;
+			}
+
+			const inBottomBlank =
+				event.clientY >= rowRect.bottom &&
+				event.clientY < separatorRect.top;
+			if (inBottomBlank) return endId;
+
+			const inCardTrailingBlank =
+				isCardLayout &&
+				event.clientY >= rowRect.top &&
+				event.clientY < separatorRect.top &&
+				event.clientX > rowRect.right;
+			if (inCardTrailingBlank) return endId;
+		}
+		return null;
 	}
 
 	private isInsideDropTarget(target: EventTarget | null): boolean {

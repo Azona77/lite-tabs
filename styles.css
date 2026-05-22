@@ -82,6 +82,10 @@ body.just-tabs-hide-icons .just-tabs-icon {
         opacity 0.1s ease;
 }
 
+body.just-tabs-hide-toolbar .just-tabs-toolbar {
+    display: none;
+}
+
 button.just-tabs-layout-button,
 button.just-tabs-toolbar-button {
     align-items: center;
@@ -212,10 +216,6 @@ body.just-tabs-active-border .just-tabs-item.is-active {
         var(--just-tabs-separator-margin-x, 8px);
     min-height: var(--just-tabs-separator-thickness, 2px);
     opacity: 0.38;
-}
-
-.just-tabs-group-separator.is-drag-over {
-    opacity: 0.9;
 }
 
 .just-tabs-icon {

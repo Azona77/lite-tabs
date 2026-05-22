@@ -67,6 +67,7 @@ export default class JustTabsPlugin extends Plugin {
 		document.body.removeClass("just-tabs-layout-card");
 		document.body.removeClass("just-tabs-layout-list");
 		document.body.removeClass("just-tabs-hide-icons");
+		document.body.removeClass("just-tabs-hide-toolbar");
 		document.body.removeClass("just-tabs-active-background");
 		document.body.removeClass("just-tabs-active-border");
 		this.clearStyleVariables();
@@ -100,6 +101,10 @@ export default class JustTabsPlugin extends Plugin {
 		document.body.toggleClass(
 			"just-tabs-hide-icons",
 			!this.settings.showIcons
+		);
+		document.body.toggleClass(
+			"just-tabs-hide-toolbar",
+			this.settings.hideToolbar
 		);
 		document.body.toggleClass(
 			"just-tabs-active-background",

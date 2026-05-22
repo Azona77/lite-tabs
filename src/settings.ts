@@ -9,6 +9,7 @@ import JustTabsPlugin from "./main";
 
 export interface JustTabsSettings {
 	hideNativeTabs: boolean;
+	hideToolbar: boolean;
 	layoutStyle: "list" | "card";
 	showIcons: boolean;
 	separatorThickness: number;
@@ -26,7 +27,8 @@ export interface JustTabsSettings {
 }
 
 export const DEFAULT_SETTINGS: JustTabsSettings = {
-	hideNativeTabs: true,
+	hideNativeTabs: false,
+	hideToolbar: false,
 	layoutStyle: "list",
 	showIcons: true,
 	separatorThickness: 2,
@@ -99,6 +101,19 @@ export class JustTabsSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.showIcons)
 					.onChange(async (value) => {
 						this.plugin.settings.showIcons = value;
+						this.plugin.applySettings();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Hide toolbar")
+			.setDesc("Hide the Just Tabs panel toolbar for a more compact panel.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.hideToolbar)
+					.onChange(async (value) => {
+						this.plugin.settings.hideToolbar = value;
 						this.plugin.applySettings();
 						await this.plugin.saveSettings();
 					});
