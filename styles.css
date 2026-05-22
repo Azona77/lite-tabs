@@ -21,7 +21,7 @@ body.just-tabs-layout-card .just-tabs-item {
     align-items: start;
     border: 1px solid var(--background-modifier-border);
     border-radius: 8px;
-    grid-template-columns: 20px minmax(0, 1fr) 22px;
+    grid-template-columns: 20px minmax(0, 1fr);
     box-sizing: border-box;
     height: var(--just-tabs-card-height, 56px);
     overflow: hidden;
@@ -42,7 +42,7 @@ body.just-tabs-layout-card .just-tabs-empty {
 }
 
 body.just-tabs-hide-icons .just-tabs-item {
-    grid-template-columns: minmax(0, 1fr) 22px;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 body.just-tabs-hide-icons .just-tabs-icon {
@@ -160,11 +160,12 @@ button.just-tabs-toolbar-button {
     color: var(--text-normal);
     cursor: default;
     display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) 22px;
+    grid-template-columns: 18px minmax(0, 1fr);
     gap: 6px;
     font-size: var(--just-tabs-list-font-size, 13px);
     min-height: var(--just-tabs-list-item-height, 30px);
     padding: 3px 5px;
+    position: relative;
     user-select: none;
 }
 
@@ -235,18 +236,42 @@ body.just-tabs-active-border .just-tabs-item.is-active {
 
 .just-tabs-close {
     align-items: center;
+    background: var(--background-primary);
     border-radius: 4px;
     color: var(--text-muted);
     display: flex;
     height: 22px;
     justify-content: center;
     opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.92);
+    transition:
+        background-color 0.1s ease,
+        color 0.1s ease,
+        opacity 0.1s ease,
+        transform 0.1s ease;
     width: 22px;
+    z-index: 2;
 }
 
-.just-tabs-item:hover .just-tabs-close,
-.just-tabs-item.is-active .just-tabs-close {
+body.just-tabs-layout-card .just-tabs-close {
+    right: 5px;
+    top: 5px;
+    transform: scale(0.92);
+}
+
+.just-tabs-item:hover .just-tabs-close{
     opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+}
+
+body.just-tabs-layout-card .just-tabs-item:hover .just-tabs-close,
+body.just-tabs-layout-card .just-tabs-item.is-active .just-tabs-close {
+    transform: scale(1);
 }
 
 .just-tabs-close:hover {
