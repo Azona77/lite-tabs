@@ -21,6 +21,16 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 - Updates only the active-state class when the active tab changes.
 - Does not maintain large persistent caches or synchronize custom group titles.
 
+## Security boundary
+
+- Does not access the internet or open external URLs.
+- Does not read from or write to the clipboard.
+- Does not read, write, rename, or delete vault files.
+- Persists only this plugin's settings through Obsidian's plugin data API.
+- Changes only the workspace tab state when you activate, close, or reorder tabs.
+
+Run `npm run check:boundaries` before release to check for common forbidden APIs.
+
 ## Installation
 
 Download `main.js`, `manifest.json`, and `styles.css` from the release, then place them in:

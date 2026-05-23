@@ -5,6 +5,7 @@
 	"main": "main.js",
 	"scripts": {
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"check:boundaries": "node scripts/check-boundaries.mjs",
 		"dev": "node esbuild.config.mjs dev"
 	},
 	"keywords": [
