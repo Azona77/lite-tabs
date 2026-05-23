@@ -23,8 +23,8 @@ interface RuntimeWorkspace {
 }
 
 interface RuntimeLeaf {
-	id: string;
-	parent: RuntimeParent | null;
+	id?: string;
+	parent?: unknown;
 	setDimension?: (dimension: number | null) => void;
 }
 
@@ -37,11 +37,28 @@ interface RuntimeParent {
 }
 
 export function getLeafId(leaf: WorkspaceLeaf): string {
-	return asRuntimeLeaf(leaf).id;
+	return asRuntimeLeaf(leaf).id ?? "";
 }
 
 function asRuntimeLeaf(leaf: WorkspaceLeaf): RuntimeLeaf {
 	return leaf as unknown as RuntimeLeaf;
+}
+
+function isRuntimeParent(value: unknown): value is RuntimeParent {
+	if (typeof value !== "object" || value === null) return false;
+	const parent = value as Partial<RuntimeParent>;
+	return (
+		typeof parent.id === "string" &&
+		Array.isArray(parent.children) &&
+		typeof parent.removeChild === "function" &&
+		typeof parent.insertChild === "function" &&
+		typeof parent.selectTab === "function"
+	);
+}
+
+function getRuntimeParent(leaf: WorkspaceLeaf): RuntimeParent | null {
+	const parent = asRuntimeLeaf(leaf).parent;
+	return isRuntimeParent(parent) ? parent : null;
 }
 
 function getActiveLeaf(app: App): WorkspaceLeaf | null {
@@ -51,11 +68,12 @@ function getActiveLeaf(app: App): WorkspaceLeaf | null {
 
 export function getActiveTabId(app: App): string | null {
 	const activeLeaf = getActiveLeaf(app);
-	return activeLeaf ? getLeafId(activeLeaf) : null;
+	if (!activeLeaf) return null;
+	return getLeafId(activeLeaf) || null;
 }
 
 function getParentId(leaf: WorkspaceLeaf): string {
-	return asRuntimeLeaf(leaf).parent?.id ?? "";
+	return getRuntimeParent(leaf)?.id ?? "";
 }
 
 function iterateMainLeaves(app: App, callback: (leaf: WorkspaceLeaf) => void) {
@@ -79,6 +97,7 @@ export function collectTabs(app: App): TabItem[] {
 
 	iterateMainLeaves(app, (leaf) => {
 		const id = getLeafId(leaf);
+		if (!id) return;
 		if (leaf.getViewState().type === LITE_TABS_VIEW_TYPE) return;
 		items.push({
 			id,
@@ -113,8 +132,8 @@ export function moveLeafRelative(
 	const targetLeaf = app.workspace.getLeafById(targetId);
 	if (!sourceLeaf || !targetLeaf) return false;
 
-	const sourceParent = asRuntimeLeaf(sourceLeaf).parent;
-	const targetParent = asRuntimeLeaf(targetLeaf).parent;
+	const sourceParent = getRuntimeParent(sourceLeaf);
+	const targetParent = getRuntimeParent(targetLeaf);
 	if (!sourceParent || !targetParent) return false;
 
 	const sourceIndex = sourceParent.children.indexOf(sourceLeaf);
@@ -129,18 +148,22 @@ export function moveLeafRelative(
 		return false;
 	}
 
-	sourceParent.removeChild(sourceLeaf);
-	asRuntimeLeaf(sourceLeaf).setDimension?.(null);
-	targetParent.insertChild(insertIndex, sourceLeaf);
-	targetParent.selectTab(sourceLeaf);
-	const workspace = app.workspace as typeof app.workspace & RuntimeWorkspace;
-	workspace.requestResize?.();
-	workspace.onLayoutChange?.();
-	return true;
+	try {
+		sourceParent.removeChild(sourceLeaf);
+		asRuntimeLeaf(sourceLeaf).setDimension?.(null);
+		targetParent.insertChild(insertIndex, sourceLeaf);
+		targetParent.selectTab(sourceLeaf);
+		const workspace = app.workspace as typeof app.workspace & RuntimeWorkspace;
+		workspace.requestResize?.();
+		workspace.onLayoutChange?.();
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 export function closeOtherLeavesInGroup(leaf: WorkspaceLeaf): void {
-	const parent = asRuntimeLeaf(leaf).parent;
+	const parent = getRuntimeParent(leaf);
 	if (!parent) return;
 	for (const sibling of [...parent.children]) {
 		if (getLeafId(sibling) !== getLeafId(leaf)) {
