@@ -1,6 +1,11 @@
 import { Plugin, WorkspaceLeaf, addIcon } from "obsidian";
 import { LiteTabsView } from "./LiteTabsView";
-import { DEFAULT_SETTINGS, LiteTabsSettingTab, LiteTabsSettings } from "./settings";
+import {
+	DEFAULT_SETTINGS,
+	LiteTabsSettingTab,
+	LiteTabsSettings,
+	normalizeSettings,
+} from "./settings";
 import { LITE_TABS_VIEW_TYPE } from "./tabs";
 
 const LITE_TABS_ICON = `
@@ -74,11 +79,7 @@ export default class LiteTabsPlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		);
+		this.settings = normalizeSettings(await this.loadData());
 	}
 
 	async saveSettings(): Promise<void> {

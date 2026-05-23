@@ -45,11 +45,126 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	activeTabBorder: true,
 };
 
+type SettingsRecord = Partial<Record<keyof LiteTabsSettings, unknown>>;
+
+const NUMERIC_MINIMUMS: Record<NumericSettingKey, number> = {
+	separatorThickness: 0,
+	separatorMarginY: 0,
+	separatorMarginX: 0,
+	listItemHeight: 1,
+	listFontSize: 1,
+	cardWidth: 1,
+	cardHeight: 1,
+	cardFontSize: 1,
+	cardGap: 0,
+	activeTabEmphasis: 0,
+};
+
+const NUMERIC_MAXIMUMS: Partial<Record<NumericSettingKey, number>> = {
+	activeTabEmphasis: 100,
+};
+
 type NumericSettingKey = {
 	[K in keyof LiteTabsSettings]: LiteTabsSettings[K] extends number
 		? K
 		: never;
 }[keyof LiteTabsSettings];
+
+function isSettingsRecord(value: unknown): value is SettingsRecord {
+	return typeof value === "object" && value !== null;
+}
+
+function readBoolean(
+	source: SettingsRecord,
+	key: keyof LiteTabsSettings,
+	fallback: boolean
+): boolean {
+	return typeof source[key] === "boolean" ? source[key] : fallback;
+}
+
+function readNumber(
+	source: SettingsRecord,
+	key: NumericSettingKey,
+	fallback: number
+): number {
+	const value = source[key];
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		return fallback;
+	}
+	const minimum = NUMERIC_MINIMUMS[key];
+	const maximum = NUMERIC_MAXIMUMS[key];
+	const bounded = Math.max(minimum, value);
+	return maximum === undefined ? bounded : Math.min(maximum, bounded);
+}
+
+export function normalizeSettings(data: unknown): LiteTabsSettings {
+	const source = isSettingsRecord(data) ? data : {};
+	return {
+		hideNativeTabs: readBoolean(
+			source,
+			"hideNativeTabs",
+			DEFAULT_SETTINGS.hideNativeTabs
+		),
+		hideToolbar: readBoolean(
+			source,
+			"hideToolbar",
+			DEFAULT_SETTINGS.hideToolbar
+		),
+		layoutStyle:
+			source.layoutStyle === "card" || source.layoutStyle === "list"
+				? source.layoutStyle
+				: DEFAULT_SETTINGS.layoutStyle,
+		showIcons: readBoolean(source, "showIcons", DEFAULT_SETTINGS.showIcons),
+		separatorThickness: readNumber(
+			source,
+			"separatorThickness",
+			DEFAULT_SETTINGS.separatorThickness
+		),
+		separatorMarginY: readNumber(
+			source,
+			"separatorMarginY",
+			DEFAULT_SETTINGS.separatorMarginY
+		),
+		separatorMarginX: readNumber(
+			source,
+			"separatorMarginX",
+			DEFAULT_SETTINGS.separatorMarginX
+		),
+		listItemHeight: readNumber(
+			source,
+			"listItemHeight",
+			DEFAULT_SETTINGS.listItemHeight
+		),
+		listFontSize: readNumber(
+			source,
+			"listFontSize",
+			DEFAULT_SETTINGS.listFontSize
+		),
+		cardWidth: readNumber(source, "cardWidth", DEFAULT_SETTINGS.cardWidth),
+		cardHeight: readNumber(source, "cardHeight", DEFAULT_SETTINGS.cardHeight),
+		cardFontSize: readNumber(
+			source,
+			"cardFontSize",
+			DEFAULT_SETTINGS.cardFontSize
+		),
+		cardGap: readNumber(source, "cardGap", DEFAULT_SETTINGS.cardGap),
+		activeTabEmphasis: readNumber(
+			source,
+			"activeTabEmphasis",
+			DEFAULT_SETTINGS.activeTabEmphasis
+		),
+		activeTabBackground: readBoolean(
+			source,
+			"activeTabBackground",
+			DEFAULT_SETTINGS.activeTabBackground
+		),
+		activeTabBorder: readBoolean(
+			source,
+			"activeTabBorder",
+			DEFAULT_SETTINGS.activeTabBorder
+		),
+	};
+}
 
 export class LiteTabsSettingTab extends PluginSettingTab {
 	private plugin: LiteTabsPlugin;
