@@ -22,6 +22,33 @@ interface RowRecord {
 	active: boolean;
 }
 
+interface RectSnapshot {
+	left: number;
+	right: number;
+	top: number;
+	bottom: number;
+	width: number;
+	height: number;
+}
+
+interface RowGeometry {
+	id: string;
+	el: HTMLElement;
+	rect: RectSnapshot;
+}
+
+interface SeparatorGeometry {
+	endId: string;
+	rowRect: RectSnapshot;
+	separatorRect: RectSnapshot;
+}
+
+interface DragGeometry {
+	listRect: RectSnapshot;
+	rows: RowGeometry[];
+	separators: SeparatorGeometry[];
+}
+
 export class TabController {
 	private plugin: LiteTabsPlugin;
 	private rootEl: HTMLElement;
@@ -49,6 +76,7 @@ export class TabController {
 	private dropPosition: "before" | "after" = "before";
 	private indicatorKey: string | null = null;
 	private indicatorTargetKey: string | null = null;
+	private dragGeometry: DragGeometry | null = null;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -66,6 +94,9 @@ export class TabController {
 		});
 		this.listEl.addEventListener("drop", (event) => {
 			this.handleListDrop(event);
+		});
+		this.listEl.addEventListener("scroll", () => {
+			this.invalidateDragGeometry();
 		});
 		this.emptyEl = this.listEl.createDiv({
 			cls: "lite-tabs-empty",
@@ -106,6 +137,7 @@ export class TabController {
 	}
 
 	refreshStructure(force = false): void {
+		this.invalidateDragGeometry();
 		const items = collectTabs(this.plugin.app);
 		const nextSignature = this.getStructureSignature(items);
 		if (!force && nextSignature === this.structureSignature) {
@@ -292,6 +324,7 @@ export class TabController {
 	private startDrag(id: string, el: HTMLElement, event: DragEvent): void {
 		this.draggedId = id;
 		this.dragSourceEl = el;
+		this.invalidateDragGeometry();
 		this.rootEl.toggleClass("is-dragging", true);
 		el.toggleClass("is-drag-source", true);
 		event.dataTransfer?.setData("text/plain", id);
@@ -473,8 +506,8 @@ export class TabController {
 		targetKey: string
 	): void {
 		this.indicatorTargetKey = targetKey;
-		const rect = el.getBoundingClientRect();
-		const listRect = this.listEl.getBoundingClientRect();
+		const rect = this.getCachedElementRect(el);
+		const listRect = this.getDragGeometry().listRect;
 		const isCardLayout = this.plugin.settings.layoutStyle === "card";
 		const x = isCardLayout
 			? position === "before"
@@ -579,17 +612,14 @@ export class TabController {
 	}
 
 	private getRowAtPoint(x: number, y: number): HTMLElement | null {
-		for (const id of this.orderedIds) {
-			const row = this.rows.get(id);
-			if (!row) continue;
-			const rect = row.el.getBoundingClientRect();
+		for (const { el, rect } of this.getDragGeometry().rows) {
 			if (
 				x >= rect.left &&
 				x <= rect.right &&
 				y >= rect.top &&
 				y <= rect.bottom
 			) {
-				return row.el;
+				return el;
 			}
 		}
 		return null;
@@ -598,9 +628,12 @@ export class TabController {
 	private canDropAtListEnd(event: DragEvent): boolean {
 		if (!this.draggedId || !this.lastGroupEndId) return false;
 		if (this.isInsideDropTarget(event.target)) return false;
-		const lastRow = this.rows.get(this.lastGroupEndId);
+		const geometry = this.getDragGeometry();
+		const lastRow = geometry.rows.find(
+			(row) => row.id === this.lastGroupEndId
+		);
 		if (!lastRow) return false;
-		const listRect = this.listEl.getBoundingClientRect();
+		const listRect = geometry.listRect;
 		if (
 			event.clientX < listRect.left ||
 			event.clientX > listRect.right ||
@@ -610,7 +643,7 @@ export class TabController {
 			return false;
 		}
 
-		const lastRect = lastRow.el.getBoundingClientRect();
+		const lastRect = lastRow.rect;
 		if (event.clientY >= lastRect.bottom) return true;
 		return (
 			this.plugin.settings.layoutStyle === "card" &&
@@ -624,7 +657,8 @@ export class TabController {
 		if (!this.draggedId) return null;
 		if (this.isInsideDropTarget(event.target)) return null;
 
-		const listRect = this.listEl.getBoundingClientRect();
+		const geometry = this.getDragGeometry();
+		const listRect = geometry.listRect;
 		if (
 			event.clientX < listRect.left ||
 			event.clientX > listRect.right ||
@@ -635,12 +669,7 @@ export class TabController {
 		}
 
 		const isCardLayout = this.plugin.settings.layoutStyle === "card";
-		for (const { endId, el } of this.groupSeparators) {
-			const row = this.rows.get(endId);
-			if (!row) continue;
-
-			const rowRect = row.el.getBoundingClientRect();
-			const separatorRect = el.getBoundingClientRect();
+		for (const { endId, rowRect, separatorRect } of geometry.separators) {
 			if (
 				event.clientX >= separatorRect.left &&
 				event.clientX <= separatorRect.right &&
@@ -673,12 +702,68 @@ export class TabController {
 	private clearAllDragState(): void {
 		this.dragSourceEl?.toggleClass("is-drag-source", false);
 		this.dragSourceEl = null;
+		this.invalidateDragGeometry();
 		this.clearGroupDropTarget();
 		this.hideDropIndicator();
 		this.draggedId = null;
 		this.dragOverId = null;
 		this.dropPosition = "before";
 		this.rootEl.toggleClass("is-dragging", false);
+	}
+
+	private getDragGeometry(): DragGeometry {
+		if (this.dragGeometry) return this.dragGeometry;
+		const rows: RowGeometry[] = [];
+		for (const id of this.orderedIds) {
+			const row = this.rows.get(id);
+			if (!row) continue;
+			rows.push({
+				id,
+				el: row.el,
+				rect: this.readRect(row.el),
+			});
+		}
+		this.dragGeometry = {
+			listRect: this.readRect(this.listEl),
+			rows,
+			separators: this.groupSeparators
+				.map(({ endId, el }) => {
+					const row = rows.find((candidate) => candidate.id === endId);
+					if (!row) return null;
+					return {
+						endId,
+						rowRect: row.rect,
+						separatorRect: this.readRect(el),
+					};
+				})
+				.filter(
+					(
+						separator
+					): separator is SeparatorGeometry => separator !== null
+				),
+		};
+		return this.dragGeometry;
+	}
+
+	private getCachedElementRect(el: HTMLElement): RectSnapshot {
+		const row = this.getDragGeometry().rows.find((entry) => entry.el === el);
+		return row?.rect ?? this.readRect(el);
+	}
+
+	private readRect(el: HTMLElement): RectSnapshot {
+		const rect = el.getBoundingClientRect();
+		return {
+			left: rect.left,
+			right: rect.right,
+			top: rect.top,
+			bottom: rect.bottom,
+			width: rect.width,
+			height: rect.height,
+		};
+	}
+
+	private invalidateDragGeometry(): void {
+		this.dragGeometry = null;
 	}
 
 	private updateRow(row: RowRecord, item: TabItem): void {
