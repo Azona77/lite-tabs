@@ -63,11 +63,26 @@ jobs:
           TAG: ${{ steps.release.outputs.tag }}
         shell: bash
         run: |
+          cat > release-notes.md <<'EOF'
+          ## English
+
+          - Added local tab title filtering.
+          - Added release safety boundary checks.
+          - Hardened settings loading and workspace tab operations.
+          - Improved drag reorder performance.
+
+          ## 中文
+
+          - 新增已打开标签页标题过滤。
+          - 新增发布前安全边界检查。
+          - 加固设置加载与工作区标签操作。
+          - 优化拖拽排序性能。
+          EOF
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --title "Lite Tabs ${TAG#v}" \
-              --notes "Release ${TAG}"
+              --notes-file release-notes.md
           fi
 
       - name: Upload release assets
