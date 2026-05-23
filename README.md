@@ -9,6 +9,7 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 ## Features
 
 - Vertical list or card-style tab view.
+- Local title filtering for open tabs.
 - Click to activate a tab, middle-click or use the close button to close a tab, and drag to reorder tabs.
 - Minimal display options: hide file icons, toolbar, or inactive tabs.
 - Customizable styles: size of the vertical list or card view, font size, divider size, and basic highlight style.

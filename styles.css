@@ -108,6 +108,22 @@ button.lite-tabs-toolbar-button {
     box-shadow: unset;
 }
 
+.lite-tabs-search {
+    background: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    color: var(--text-normal);
+    flex: 1 1 90px;
+    font-size: var(--font-ui-smaller);
+    height: 24px;
+    min-width: 48px;
+    padding: 0 6px;
+}
+
+.lite-tabs-search::placeholder {
+    color: var(--text-faint);
+}
+
 .lite-tabs-toolbar:hover .lite-tabs-layout-button,
 .lite-tabs-toolbar:hover .lite-tabs-toolbar-button,
 .lite-tabs-toolbar:focus-within .lite-tabs-layout-button,

@@ -58,6 +58,7 @@ export class TabController {
 	private iconButtonEl: HTMLButtonElement;
 	private inactiveTabsButtonEl: HTMLButtonElement;
 	private refreshButtonEl: HTMLButtonElement;
+	private searchInputEl: HTMLInputElement;
 	private listEl: HTMLElement;
 	private dropIndicatorEl: HTMLElement;
 	private emptyEl: HTMLElement;
@@ -77,6 +78,7 @@ export class TabController {
 	private indicatorKey: string | null = null;
 	private indicatorTargetKey: string | null = null;
 	private dragGeometry: DragGeometry | null = null;
+	private filterQuery = "";
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -88,6 +90,7 @@ export class TabController {
 		this.iconButtonEl = this.createIconButton();
 		this.inactiveTabsButtonEl = this.createInactiveTabsButton();
 		this.refreshButtonEl = this.createRefreshButton();
+		this.searchInputEl = this.createSearchInput();
 		this.listEl = this.rootEl.createDiv({ cls: "lite-tabs-list" });
 		this.listEl.addEventListener("dragover", (event) => {
 			this.handleListDragOver(event);
@@ -203,11 +206,11 @@ export class TabController {
 			nextIds.map((id, index) => [id, index])
 		);
 		this.structureSignature = nextSignature;
-		this.emptyEl.toggle(items.length === 0);
 		this.syncActive(items);
 		this.syncLayoutButtons();
 		this.syncIconButton();
 		this.syncInactiveTabsButton();
+		this.applyFilter();
 		this.restoreScrollTop(previousScrollTop);
 	}
 
@@ -422,6 +425,30 @@ export class TabController {
 		return button;
 	}
 
+	private createSearchInput(): HTMLInputElement {
+		const input = this.toolbarEl.createEl("input", {
+			cls: "lite-tabs-search",
+			attr: {
+				"aria-label": "Search tabs",
+				placeholder: "Search tabs",
+				type: "search",
+			},
+		});
+		input.addEventListener("input", () => {
+			this.filterQuery = input.value.trim().toLocaleLowerCase();
+			this.clearAllDragState();
+			this.applyFilter();
+		});
+		input.addEventListener("keydown", (event) => {
+			if (event.key !== "Escape" || !input.value) return;
+			event.stopPropagation();
+			input.value = "";
+			this.filterQuery = "";
+			this.applyFilter();
+		});
+		return input;
+	}
+
 	private createGroupSeparator(): HTMLElement {
 		return createDiv({ cls: "lite-tabs-group-separator" });
 	}
@@ -538,6 +565,7 @@ export class TabController {
 	}
 
 	private handleListDragOver(event: DragEvent): void {
+		if (this.isFilterActive()) return;
 		const rowEl = this.getEventRow(event);
 		const rowId = rowEl?.dataset.leafId;
 		if (rowEl && rowId && this.draggedId && this.draggedId !== rowId) {
@@ -557,6 +585,7 @@ export class TabController {
 	}
 
 	private handleListDrop(event: DragEvent): void {
+		if (this.isFilterActive()) return;
 		const rowEl = this.getEventRow(event);
 		const rowId = rowEl?.dataset.leafId;
 		if (rowEl && rowId && this.draggedId && this.draggedId !== rowId) {
@@ -785,6 +814,35 @@ export class TabController {
 			renderIcon(row.iconEl, item.icon);
 			row.renderedIcon = item.icon;
 		}
+	}
+
+	private applyFilter(): void {
+		const hasFilter = this.isFilterActive();
+		let visibleCount = 0;
+		for (const row of this.rows.values()) {
+			const visible =
+				!hasFilter ||
+				row.item.title.toLocaleLowerCase().includes(this.filterQuery);
+			row.el.toggle(visible);
+			row.el.draggable = !hasFilter;
+			if (visible) visibleCount += 1;
+		}
+		for (const { el } of this.groupSeparators) {
+			el.toggle(!hasFilter);
+		}
+		this.emptyEl.setText(
+			this.rows.size === 0
+				? "No open tabs"
+				: hasFilter
+					? "No matching tabs"
+					: "No open tabs"
+		);
+		this.emptyEl.toggle(visibleCount === 0);
+		this.invalidateDragGeometry();
+	}
+
+	private isFilterActive(): boolean {
+		return this.filterQuery.length > 0;
 	}
 
 	private activateLeaf(leaf: WorkspaceLeaf): void {
