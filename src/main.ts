@@ -17,8 +17,10 @@ const LITE_TABS_ICON = `
 
 export default class LiteTabsPlugin extends Plugin {
 	settings: LiteTabsSettings = DEFAULT_SETTINGS;
+	private isLoaded = false;
 
 	async onload(): Promise<void> {
+		this.isLoaded = true;
 		addIcon("lite-tabs", LITE_TABS_ICON);
 		await this.loadSettings();
 		this.applySettings();
@@ -63,11 +65,13 @@ export default class LiteTabsPlugin extends Plugin {
 		this.addSettingTab(new LiteTabsSettingTab(this.app, this));
 
 		this.app.workspace.onLayoutReady(() => {
+			if (!this.isLoaded) return;
 			this.openView(false);
 		});
 	}
 
 	onunload(): void {
+		this.isLoaded = false;
 		document.body.removeClass("lite-tabs-hide-native");
 		document.body.removeClass("lite-tabs-layout-card");
 		document.body.removeClass("lite-tabs-layout-list");
