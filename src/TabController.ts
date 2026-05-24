@@ -111,6 +111,7 @@ export class TabController {
 	private autoScrollFrame: number | null = null;
 	private autoScrollVelocity = 0;
 	private overflowFrame: number | null = null;
+	private renderedLayoutStyle: LiteTabsLayoutStyle | null = null;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -180,6 +181,7 @@ export class TabController {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.rows.clear();
+		this.listEl.style.removeProperty("--lite-tabs-bottom-spacer");
 		this.rootEl.remove();
 	}
 
@@ -208,7 +210,11 @@ export class TabController {
 			this.syncActive();
 			return;
 		}
-		const previousScrollTop = this.listEl.scrollTop;
+		const layoutChanged =
+			this.renderedLayoutStyle !== null &&
+			this.renderedLayoutStyle !== this.plugin.settings.layoutStyle;
+		const previousScrollTop = layoutChanged ? 0 : this.listEl.scrollTop;
+		this.listEl.style.setProperty("--lite-tabs-bottom-spacer", "0px");
 		const nextIds = items.map((item) => item.id);
 		const nextIdSet = new Set(nextIds);
 		const itemsById = new Map(items.map((item) => [item.id, item]));
@@ -275,6 +281,7 @@ export class TabController {
 		this.scheduleMasonryLayout();
 		this.restoreScrollTop(previousScrollTop);
 		this.scheduleListOverflowCheck();
+		this.renderedLayoutStyle = this.plugin.settings.layoutStyle;
 	}
 
 	syncActive(items?: TabItem[]): void {
@@ -1398,9 +1405,24 @@ export class TabController {
 
 	private syncListOverflowState(): void {
 		const tolerance = 1;
+		this.listEl.style.setProperty("--lite-tabs-bottom-spacer", "0px");
 		const isOverflowing =
 			this.listEl.scrollHeight > this.listEl.clientHeight + tolerance;
+		const shouldStackBottom =
+			document.body.hasClass("is-mobile") &&
+			this.plugin.settings.mobileStackBottom &&
+			!isOverflowing;
+		const spacer = shouldStackBottom
+			? Math.max(0, this.listEl.clientHeight - this.listEl.scrollHeight)
+			: 0;
 		this.listEl.toggleClass("is-overflowing", isOverflowing);
+		this.listEl.style.setProperty(
+			"--lite-tabs-bottom-spacer",
+			`${spacer}px`
+		);
+		if (spacer > 0 && this.listEl.scrollTop !== 0) {
+			this.listEl.scrollTop = 0;
+		}
 	}
 
 	private applyMasonryLayout(): void {
