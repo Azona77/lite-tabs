@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
 	hideToolbar: false,
 	layoutStyle: "list",
-	mobileStackBottom: false,
+	mobileStackBottom: true,
 	showIcons: true,
 	separatorThickness: 2,
 	separatorMarginY: 7,
@@ -227,7 +227,7 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Stack mobile tabs at bottom")
-			.setDesc("On mobile, align the Lite Tabs list, card, and masonry views to the bottom of the panel.")
+			.setDesc("Mobile only. Align the Lite Tabs list, card, and masonry views to the bottom of the panel.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.mobileStackBottom)
