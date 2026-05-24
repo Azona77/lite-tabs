@@ -212,8 +212,12 @@ button.lite-tabs-toolbar-button {
     position: relative;
 }
 
+body.is-mobile .lite-tabs-list {
+    overscroll-behavior: contain;
+}
+
 body.is-mobile.lite-tabs-mobile-stack-bottom.lite-tabs-layout-list
-    .lite-tabs-list::before {
+    .lite-tabs-list:not(.is-overflowing)::before {
     content: "";
     display: block;
     margin-top: auto;
@@ -380,6 +384,14 @@ body.is-mobile .lite-tabs-item {
 
 body.is-mobile .lite-tabs-drag-handle {
     display: flex;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+}
+
+body.is-mobile .lite-tabs-drag-handle *,
+body.is-mobile .lite-tabs-drag-handle svg {
+    pointer-events: none;
     touch-action: none;
 }
 
@@ -403,18 +415,29 @@ body.is-mobile.lite-tabs-layout-masonry .lite-tabs-drag-handle {
     width: auto;
 }
 
-body.is-mobile .lite-tabs-title {
-    padding-right: 26px;
+body.is-mobile.lite-tabs-layout-card .lite-tabs-drag-handle svg,
+body.is-mobile.lite-tabs-layout-masonry .lite-tabs-drag-handle svg {
+    display: none;
 }
 
-body.is-mobile .lite-tabs-close {
-    opacity: 0.42;
-    pointer-events: auto;
-    transform: translateY(-50%) scale(1);
+body.is-mobile.lite-tabs-layout-card .lite-tabs-drag-handle::before,
+body.is-mobile.lite-tabs-layout-masonry .lite-tabs-drag-handle::before {
+    border-top: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    content: "";
+    height: 5px;
+    opacity: 0.6;
+    width: min(56px, 58%);
+}
+
+body.is-mobile .lite-tabs-item.is-active .lite-tabs-title {
+    padding-right: 26px;
 }
 
 body.is-mobile .lite-tabs-item.is-active .lite-tabs-close {
     opacity: 0.62;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
 }
 
 body.is-mobile .lite-tabs-drag-handle:active,

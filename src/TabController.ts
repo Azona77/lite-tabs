@@ -68,7 +68,6 @@ interface PointerDragState {
 	pointerId: number;
 	lastX: number;
 	lastY: number;
-	previousHandleTouchAction: string;
 	previousSourceTouchAction: string;
 }
 
@@ -117,6 +116,14 @@ export class TabController {
 		this.plugin = plugin;
 		containerEl.empty();
 		this.rootEl = containerEl.createDiv({ cls: "lite-tabs-root" });
+		this.rootEl.addEventListener(
+			"touchmove",
+			(event) => {
+				if (!this.pointerDragState) return;
+				this.stopMobileHandleTouch(event);
+			},
+			{ passive: false, capture: true }
+		);
 		this.toolbarEl = this.rootEl.createDiv({ cls: "lite-tabs-toolbar" });
 		this.listButtonEl = this.createLayoutButton("list", "List view");
 		this.cardButtonEl = this.createLayoutButton("card", "Card view");
@@ -358,6 +365,20 @@ export class TabController {
 			event.preventDefault();
 			event.stopPropagation();
 		});
+		handleEl.addEventListener(
+			"touchstart",
+			(event) => {
+				this.stopMobileHandleTouch(event);
+			},
+			{ passive: false, capture: true }
+		);
+		handleEl.addEventListener(
+			"touchmove",
+			(event) => {
+				this.stopMobileHandleTouch(event);
+			},
+			{ passive: false, capture: true }
+		);
 		handleEl.addEventListener("pointerdown", (event) => {
 			this.startPointerDrag(item.id, el, handleEl, event);
 		});
@@ -435,10 +456,8 @@ export class TabController {
 			pointerId: event.pointerId,
 			lastX: event.clientX,
 			lastY: event.clientY,
-			previousHandleTouchAction: handleEl.style.touchAction,
 			previousSourceTouchAction: el.style.touchAction,
 		};
-		handleEl.style.touchAction = "none";
 		el.style.touchAction = "none";
 		this.draggedId = id;
 		this.dragSourceEl = el;
@@ -499,8 +518,14 @@ export class TabController {
 	}
 
 	private restorePointerDragTouchAction(state: PointerDragState): void {
-		state.handleEl.style.touchAction = state.previousHandleTouchAction;
 		state.sourceEl.style.touchAction = state.previousSourceTouchAction;
+	}
+
+	private stopMobileHandleTouch(event: TouchEvent): void {
+		if (!document.body.hasClass("is-mobile")) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.stopImmediatePropagation();
 	}
 
 	private createLayoutButton(
