@@ -14,7 +14,7 @@ body.lite-tabs-layout-card .lite-tabs-list {
     );
     height: 100%;
     align-content: start;
-    padding: calc(8px + var(--lite-tabs-bottom-spacer, 0px)) 8px 8px;
+    padding: 8px;
 }
 
 body.lite-tabs-layout-masonry .lite-tabs-list {
@@ -28,7 +28,7 @@ body.lite-tabs-layout-masonry .lite-tabs-list {
         minmax(min(100%, var(--lite-tabs-card-width, 180px)), 1fr)
     );
     height: 100%;
-    padding: calc(8px + var(--lite-tabs-bottom-spacer, 0px)) 8px 8px;
+    padding: 8px;
 }
 
 body.lite-tabs-layout-card .lite-tabs-item {
@@ -208,7 +208,7 @@ button.lite-tabs-toolbar-button {
     height: 100%;
     min-height: 0;
     overflow-y: auto;
-    padding: calc(6px + var(--lite-tabs-bottom-spacer, 0px)) 6px 6px;
+    padding: 6px;
     position: relative;
 }
 
@@ -220,6 +220,23 @@ body.is-mobile .lite-tabs-list {
     color: var(--text-muted);
     font-size: var(--font-ui-small);
     padding: 12px;
+}
+
+.lite-tabs-bottom-spacer {
+    display: block;
+    flex: 0 0 auto;
+    height: 0;
+    min-height: 0;
+    pointer-events: none;
+}
+
+body.lite-tabs-layout-card .lite-tabs-bottom-spacer,
+body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
+    grid-column: 1 / -1;
+}
+
+body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
+    grid-row-end: span var(--lite-tabs-bottom-spacer-span, 1);
 }
 
 .lite-tabs-item {

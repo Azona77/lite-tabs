@@ -83,6 +83,7 @@ export class TabController {
 	private refreshButtonEl: HTMLButtonElement;
 	private searchInputEl: HTMLInputElement;
 	private listEl: HTMLElement;
+	private bottomSpacerEl: HTMLElement;
 	private dropIndicatorEl: HTMLElement;
 	private emptyEl: HTMLElement;
 	private rows = new Map<string, RowRecord>();
@@ -146,6 +147,9 @@ export class TabController {
 		this.listEl.addEventListener("scroll", () => {
 			this.invalidateDragGeometry();
 		});
+		this.bottomSpacerEl = this.listEl.createDiv({
+			cls: "lite-tabs-bottom-spacer",
+		});
 		this.emptyEl = this.listEl.createDiv({
 			cls: "lite-tabs-empty",
 			text: "No open tabs",
@@ -181,7 +185,7 @@ export class TabController {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.rows.clear();
-		this.listEl.style.removeProperty("--lite-tabs-bottom-spacer");
+		this.resetBottomSpacer();
 		this.rootEl.remove();
 	}
 
@@ -214,7 +218,7 @@ export class TabController {
 			this.renderedLayoutStyle !== null &&
 			this.renderedLayoutStyle !== this.plugin.settings.layoutStyle;
 		const previousScrollTop = layoutChanged ? 0 : this.listEl.scrollTop;
-		this.listEl.style.setProperty("--lite-tabs-bottom-spacer", "0px");
+		this.resetBottomSpacer();
 		const nextIds = items.map((item) => item.id);
 		const nextIdSet = new Set(nextIds);
 		const itemsById = new Map(items.map((item) => [item.id, item]));
@@ -1405,7 +1409,7 @@ export class TabController {
 
 	private syncListOverflowState(): void {
 		const tolerance = 1;
-		this.listEl.style.setProperty("--lite-tabs-bottom-spacer", "0px");
+		this.resetBottomSpacer();
 		const isOverflowing =
 			this.listEl.scrollHeight > this.listEl.clientHeight + tolerance;
 		const shouldStackBottom =
@@ -1416,13 +1420,23 @@ export class TabController {
 			? Math.max(0, this.listEl.clientHeight - this.listEl.scrollHeight)
 			: 0;
 		this.listEl.toggleClass("is-overflowing", isOverflowing);
-		this.listEl.style.setProperty(
-			"--lite-tabs-bottom-spacer",
-			`${spacer}px`
-		);
+		this.setBottomSpacer(spacer);
 		if (spacer > 0 && this.listEl.scrollTop !== 0) {
 			this.listEl.scrollTop = 0;
 		}
+	}
+
+	private resetBottomSpacer(): void {
+		this.setBottomSpacer(0);
+	}
+
+	private setBottomSpacer(height: number): void {
+		const roundedHeight = Math.max(0, Math.floor(height));
+		this.bottomSpacerEl.style.height = `${roundedHeight}px`;
+		this.bottomSpacerEl.style.setProperty(
+			"--lite-tabs-bottom-spacer-span",
+			String(Math.max(1, roundedHeight))
+		);
 	}
 
 	private applyMasonryLayout(): void {
