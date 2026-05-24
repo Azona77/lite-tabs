@@ -19,16 +19,17 @@ body.lite-tabs-layout-card .lite-tabs-list {
 
 body.lite-tabs-layout-masonry .lite-tabs-list {
     align-content: start;
+    column-gap: var(--lite-tabs-card-gap, 6px);
     display: grid;
-    gap: var(--lite-tabs-card-gap, 6px);
     grid-auto-flow: dense;
-    grid-auto-rows: 4px;
+    grid-auto-rows: 1px;
     grid-template-columns: repeat(
         auto-fill,
         minmax(min(100%, var(--lite-tabs-card-width, 180px)), 1fr)
     );
     height: 100%;
     padding: 8px;
+    row-gap: 0;
 }
 
 body.lite-tabs-layout-card .lite-tabs-item {
@@ -252,6 +253,22 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
 
 .lite-tabs-item.is-drag-source {
     opacity: 0.55;
+}
+
+.lite-tabs-item.is-drop-result {
+    animation: lite-tabs-drop-result 700ms ease-out;
+}
+
+@keyframes lite-tabs-drop-result {
+    0% {
+        outline: 2px solid var(--interactive-accent);
+        outline-offset: 2px;
+    }
+
+    100% {
+        outline: 2px solid transparent;
+        outline-offset: 7px;
+    }
 }
 
 .lite-tabs-drop-indicator {

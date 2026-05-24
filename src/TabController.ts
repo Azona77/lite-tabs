@@ -50,6 +50,12 @@ interface DragGeometry {
 	separators: SeparatorGeometry[];
 }
 
+interface MasonryDropTarget {
+	id: string;
+	position: "before" | "after";
+	indicatorClientY: number | null;
+}
+
 export class TabController {
 	private plugin: LiteTabsPlugin;
 	private rootEl: HTMLElement;
@@ -82,6 +88,8 @@ export class TabController {
 	private dragGeometry: DragGeometry | null = null;
 	private filterQuery = "";
 	private masonryFrame: number | null = null;
+	private masonryIndicatorClientY: number | null = null;
+	private pendingMovedId: string | null = null;
 	private resizeObserver: ResizeObserver | null = null;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
@@ -502,17 +510,29 @@ export class TabController {
 		event: DragEvent
 	): void {
 		const rect = el.getBoundingClientRect();
-		const rawPosition = this.isGridLikeLayout()
+		let indicatorClientY: number | null = null;
+		const rawPosition = this.isMasonryLayout()
+			? this.getMasonryDropTarget(id, rect, event)
+			: this.isGridLikeLayout()
 			? event.clientX > rect.left + rect.width / 2
 				? "after"
 				: "before"
 			: event.clientY > rect.top + rect.height / 2
 				? "after"
 				: "before";
-		const target = this.normalizeDropTarget(id, rawPosition);
+		const target =
+			typeof rawPosition === "string"
+				? this.normalizeDropTarget(id, rawPosition)
+				: rawPosition;
+		if (typeof rawPosition !== "string") {
+			indicatorClientY = rawPosition.indicatorClientY;
+		}
 		const targetRow = this.rows.get(target.id);
 		if (!targetRow) return;
-		const targetKey = `${target.id}:${target.position}`;
+		const targetKey =
+			indicatorClientY === null
+				? `${target.id}:${target.position}`
+				: `${target.id}:${target.position}:${Math.round(indicatorClientY)}`;
 		if (this.indicatorTargetKey === targetKey) {
 			this.dragOverId = target.id;
 			this.dropPosition = target.position;
@@ -521,13 +541,71 @@ export class TabController {
 		this.clearGroupDropTarget();
 		this.dragOverId = target.id;
 		this.dropPosition = target.position;
+		this.masonryIndicatorClientY = indicatorClientY;
 		this.showDropIndicator(targetRow.el, target.position, targetKey);
+	}
+
+	private getMasonryDropTarget(
+		id: string,
+		rect: DOMRect,
+		event: DragEvent
+	): MasonryDropTarget {
+		const boundary = this.getMasonryBoundaryAtPoint(
+			event.clientX,
+			event.clientY
+		);
+		if (boundary) return boundary;
+
+		const position =
+			event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+		return {
+			id,
+			position,
+			indicatorClientY: position === "before" ? rect.top : rect.bottom,
+		};
+	}
+
+	private getMasonryBoundaryAtPoint(
+		x: number,
+		y: number
+	): MasonryDropTarget | null {
+		const rows = this.getMasonryColumnRowsAtPoint(x);
+		let previous: RowGeometry | null = null;
+		for (const row of rows) {
+			if (previous && y >= previous.rect.bottom && y <= row.rect.top) {
+				return {
+					id: row.id,
+					position: "before",
+					indicatorClientY:
+						previous.rect.bottom +
+						(row.rect.top - previous.rect.bottom) / 2,
+				};
+			}
+			previous = row;
+		}
+		return null;
+	}
+
+	private getMasonryColumnRowsAtPoint(x: number): RowGeometry[] {
+		const edgeTolerance = 8;
+		return this.getDragGeometry().rows
+			.filter((row) => {
+				if (row.id === this.draggedId) return false;
+				return (
+					x >= row.rect.left - edgeTolerance &&
+					x <= row.rect.right + edgeTolerance
+				);
+			})
+			.sort((left, right) => left.rect.top - right.rect.top);
 	}
 
 	private normalizeDropTarget(
 		id: string,
 		position: "before" | "after"
 	): { id: string; position: "before" | "after" } {
+		if (this.isMasonryLayout()) {
+			return { id, position };
+		}
 		if (position !== "after") {
 			return { id, position };
 		}
@@ -567,18 +645,30 @@ export class TabController {
 		const rect = this.getCachedElementRect(el);
 		const listRect = this.getDragGeometry().listRect;
 		const isGridLikeLayout = this.isGridLikeLayout();
-		const x = isGridLikeLayout
+		const isMasonryLayout = this.isMasonryLayout();
+		const x = isMasonryLayout
+			? rect.left - listRect.left + this.listEl.scrollLeft
+			: isGridLikeLayout
 			? position === "before"
 				? rect.left - listRect.left + this.listEl.scrollLeft
 				: rect.right - listRect.left + this.listEl.scrollLeft
 			: 6 + this.listEl.scrollLeft;
-		const y = isGridLikeLayout
+		const y = isMasonryLayout
+			? (this.masonryIndicatorClientY ??
+					(position === "before" ? rect.top : rect.bottom)) -
+				listRect.top +
+				this.listEl.scrollTop
+			: isGridLikeLayout
 			? rect.top - listRect.top + this.listEl.scrollTop
 			: (position === "before" ? rect.top : rect.bottom) -
 				listRect.top +
 				this.listEl.scrollTop;
-		const width = isGridLikeLayout ? 2 : Math.max(0, listRect.width - 12);
-		const height = isGridLikeLayout ? rect.height : 2;
+		const width = isMasonryLayout
+			? rect.width
+			: isGridLikeLayout
+			? 2
+			: Math.max(0, listRect.width - 12);
+		const height = isMasonryLayout ? 2 : isGridLikeLayout ? rect.height : 2;
 		const key = `${Math.round(x)}:${Math.round(y)}:${Math.round(width)}:${Math.round(height)}`;
 		if (this.indicatorKey === key) return;
 		this.indicatorKey = key;
@@ -643,6 +733,7 @@ export class TabController {
 			sourceId &&
 			moveLeafRelative(this.plugin.app, sourceId, targetId, "after")
 		) {
+			this.pendingMovedId = sourceId;
 			this.scheduleRefresh();
 		}
 	}
@@ -658,6 +749,7 @@ export class TabController {
 			sourceId &&
 			moveLeafRelative(this.plugin.app, sourceId, targetId, position)
 		) {
+			this.pendingMovedId = sourceId;
 			this.scheduleRefresh();
 		}
 	}
@@ -667,6 +759,9 @@ export class TabController {
 		if (target instanceof HTMLElement) {
 			const row = target.closest(".lite-tabs-item");
 			if (row instanceof HTMLElement) return row;
+		}
+		if (this.isMasonryLayout()) {
+			return this.getNearestMasonryRow(event.clientX, event.clientY);
 		}
 		return this.getRowAtPoint(event.clientX, event.clientY);
 	}
@@ -683,6 +778,42 @@ export class TabController {
 			}
 		}
 		return null;
+	}
+
+	private getNearestMasonryRow(x: number, y: number): HTMLElement | null {
+		const geometry = this.getDragGeometry();
+		if (
+			x < geometry.listRect.left ||
+			x > geometry.listRect.right ||
+			y < geometry.listRect.top ||
+			y > geometry.listRect.bottom
+		) {
+			return null;
+		}
+
+		let bestRow: RowGeometry | null = null;
+		let bestDistance = Number.POSITIVE_INFINITY;
+		for (const row of geometry.rows) {
+			if (row.id === this.draggedId) continue;
+			const horizontalDistance =
+				x < row.rect.left
+					? row.rect.left - x
+					: x > row.rect.right
+					? x - row.rect.right
+					: 0;
+			const verticalDistance =
+				y < row.rect.top
+					? row.rect.top - y
+					: y > row.rect.bottom
+					? y - row.rect.bottom
+					: 0;
+			const distance = verticalDistance * 2 + horizontalDistance;
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				bestRow = row;
+			}
+		}
+		return bestRow?.el ?? null;
 	}
 
 	private canDropAtListEnd(event: DragEvent): boolean {
@@ -767,6 +898,7 @@ export class TabController {
 		this.hideDropIndicator();
 		this.draggedId = null;
 		this.dragOverId = null;
+		this.masonryIndicatorClientY = null;
 		this.dropPosition = "before";
 		this.rootEl.toggleClass("is-dragging", false);
 	}
@@ -842,24 +974,22 @@ export class TabController {
 
 		const styles = getComputedStyle(this.listEl);
 		const rowHeight = parseFloat(styles.gridAutoRows);
-		const rowGap = parseFloat(styles.rowGap);
+		const columnGap = parseFloat(styles.columnGap);
 		if (!Number.isFinite(rowHeight) || rowHeight <= 0) return;
-		const gap = Number.isFinite(rowGap) ? rowGap : 0;
+		const gap = Number.isFinite(columnGap) ? columnGap : 0;
 
 		for (const row of this.rows.values()) {
 			if (!row.el.isShown()) continue;
 			row.el.style.removeProperty("--lite-tabs-masonry-span");
 			const height = Math.max(row.el.scrollHeight, row.el.offsetHeight);
-			const span = Math.max(
-				1,
-				Math.ceil((height + gap) / (rowHeight + gap))
-			);
+			const span = Math.max(1, Math.ceil((height + gap) / rowHeight));
 			row.el.style.setProperty(
 				"--lite-tabs-masonry-span",
 				String(span)
 			);
 		}
 		this.invalidateDragGeometry();
+		this.applyPendingMoveFeedback();
 	}
 
 	private clearMasonrySpans(): void {
@@ -867,6 +997,22 @@ export class TabController {
 			row.el.style.removeProperty("--lite-tabs-masonry-span");
 		}
 		this.invalidateDragGeometry();
+		this.applyPendingMoveFeedback();
+	}
+
+	private applyPendingMoveFeedback(): void {
+		if (!this.pendingMovedId) return;
+		const row = this.rows.get(this.pendingMovedId);
+		if (!row) return;
+		this.pendingMovedId = null;
+		row.el.removeClass("is-drop-result");
+		void row.el.offsetWidth;
+		row.el.addClass("is-drop-result");
+		row.el.addEventListener(
+			"animationend",
+			() => row.el.removeClass("is-drop-result"),
+			{ once: true }
+		);
 	}
 
 	private isMasonryLayout(): boolean {
