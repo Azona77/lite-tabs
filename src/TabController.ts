@@ -1410,14 +1410,20 @@ export class TabController {
 	private syncListOverflowState(): void {
 		const tolerance = 1;
 		this.resetBottomSpacer();
-		const isOverflowing =
-			this.listEl.scrollHeight > this.listEl.clientHeight + tolerance;
+		const contentHeight = this.getVisibleContentHeight();
+		const availableHeight = this.getListContentHeight();
+		const isOverflowing = contentHeight > availableHeight + tolerance;
 		const shouldStackBottom =
 			document.body.hasClass("is-mobile") &&
 			this.plugin.settings.mobileStackBottom &&
 			!isOverflowing;
 		const spacer = shouldStackBottom
-			? Math.max(0, this.listEl.clientHeight - this.listEl.scrollHeight)
+			? Math.max(
+					0,
+					availableHeight -
+						contentHeight -
+						this.getSpacerGapAdjustment(contentHeight > 0)
+				)
 			: 0;
 		this.listEl.toggleClass("is-overflowing", isOverflowing);
 		this.setBottomSpacer(spacer);
@@ -1426,12 +1432,51 @@ export class TabController {
 		}
 	}
 
+	private getVisibleContentHeight(): number {
+		const elements = Array.from(this.listEl.children).filter(
+			(child): child is HTMLElement =>
+				child instanceof HTMLElement &&
+				child !== this.bottomSpacerEl &&
+				child !== this.dropIndicatorEl &&
+				child.isShown()
+		);
+		if (elements.length === 0) return 0;
+
+		let top = Number.POSITIVE_INFINITY;
+		let bottom = Number.NEGATIVE_INFINITY;
+		for (const el of elements) {
+			const rect = el.getBoundingClientRect();
+			top = Math.min(top, rect.top);
+			bottom = Math.max(bottom, rect.bottom);
+		}
+		return Math.max(0, bottom - top);
+	}
+
+	private getListContentHeight(): number {
+		const styles = getComputedStyle(this.listEl);
+		const paddingTop = parseFloat(styles.paddingTop);
+		const paddingBottom = parseFloat(styles.paddingBottom);
+		const verticalPadding =
+			(Number.isFinite(paddingTop) ? paddingTop : 0) +
+			(Number.isFinite(paddingBottom) ? paddingBottom : 0);
+		return Math.max(0, this.listEl.clientHeight - verticalPadding);
+	}
+
+	private getSpacerGapAdjustment(hasContent: boolean): number {
+		if (!hasContent) return 0;
+		const styles = getComputedStyle(this.listEl);
+		const rowGap = parseFloat(styles.rowGap);
+		return Number.isFinite(rowGap) ? rowGap : 0;
+	}
+
 	private resetBottomSpacer(): void {
 		this.setBottomSpacer(0);
 	}
 
 	private setBottomSpacer(height: number): void {
 		const roundedHeight = Math.max(0, Math.floor(height));
+		this.bottomSpacerEl.style.display =
+			roundedHeight > 0 ? "block" : "none";
 		this.bottomSpacerEl.style.height = `${roundedHeight}px`;
 		this.bottomSpacerEl.style.setProperty(
 			"--lite-tabs-bottom-spacer-span",
