@@ -380,6 +380,7 @@ body.is-mobile .lite-tabs-item {
 
 body.is-mobile .lite-tabs-drag-handle {
     display: flex;
+    touch-action: none;
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-item,
@@ -402,6 +403,11 @@ body.is-mobile .lite-tabs-item.is-active .lite-tabs-close {
     opacity: 0.55;
     pointer-events: auto;
     transform: translateY(-50%) scale(1);
+}
+
+body.is-mobile .lite-tabs-drag-handle:active,
+body.is-mobile .lite-tabs-root.is-dragging .lite-tabs-drag-handle {
+    opacity: 0.75;
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,

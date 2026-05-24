@@ -61,6 +61,14 @@ interface MasonryDropSlot {
 	key: string;
 }
 
+interface PointerDragState {
+	id: string;
+	handleEl: HTMLElement;
+	pointerId: number;
+	lastX: number;
+	lastY: number;
+}
+
 export class TabController {
 	private plugin: LiteTabsPlugin;
 	private rootEl: HTMLElement;
@@ -97,6 +105,9 @@ export class TabController {
 	private pendingMovedId: string | null = null;
 	private dropResultEl: HTMLElement | null = null;
 	private resizeObserver: ResizeObserver | null = null;
+	private pointerDragState: PointerDragState | null = null;
+	private autoScrollFrame: number | null = null;
+	private autoScrollVelocity = 0;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -149,6 +160,7 @@ export class TabController {
 			cancelAnimationFrame(this.masonryFrame);
 			this.masonryFrame = null;
 		}
+		this.stopAutoScroll();
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.rows.clear();
@@ -328,6 +340,26 @@ export class TabController {
 			event.stopPropagation();
 			this.closeLeaf(item.leaf);
 		});
+		handleEl.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+		});
+		handleEl.addEventListener("contextmenu", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+		});
+		handleEl.addEventListener("pointerdown", (event) => {
+			this.startPointerDrag(item.id, el, handleEl, event);
+		});
+		handleEl.addEventListener("pointermove", (event) => {
+			this.updatePointerDrag(event);
+		});
+		handleEl.addEventListener("pointerup", (event) => {
+			this.finishPointerDrag(event);
+		});
+		handleEl.addEventListener("pointercancel", (event) => {
+			this.cancelPointerDrag(event);
+		});
 		el.addEventListener("contextmenu", (event) => {
 			event.preventDefault();
 			this.showContextMenu(item.leaf, event);
@@ -372,6 +404,81 @@ export class TabController {
 		el.toggleClass("is-drag-source", true);
 		event.dataTransfer?.setData("text/plain", id);
 		event.dataTransfer?.setDragImage(el, 10, 10);
+	}
+
+	private startPointerDrag(
+		id: string,
+		el: HTMLElement,
+		handleEl: HTMLElement,
+		event: PointerEvent
+	): void {
+		if (!document.body.hasClass("is-mobile")) return;
+		if (event.button !== 0 || this.isFilterActive()) return;
+		event.preventDefault();
+		event.stopPropagation();
+		handleEl.setPointerCapture(event.pointerId);
+		this.clearAllDragState();
+		this.pointerDragState = {
+			id,
+			handleEl,
+			pointerId: event.pointerId,
+			lastX: event.clientX,
+			lastY: event.clientY,
+		};
+		this.draggedId = id;
+		this.dragSourceEl = el;
+		this.invalidateDragGeometry();
+		this.rootEl.toggleClass("is-dragging", true);
+		el.toggleClass("is-drag-source", true);
+		this.updatePointerDropTarget(event.clientX, event.clientY);
+	}
+
+	private updatePointerDrag(event: PointerEvent): void {
+		const state = this.pointerDragState;
+		if (!state || event.pointerId !== state.pointerId) return;
+		event.preventDefault();
+		event.stopPropagation();
+		state.lastX = event.clientX;
+		state.lastY = event.clientY;
+		this.updatePointerAutoScroll(event.clientY);
+		this.updatePointerDropTarget(event.clientX, event.clientY);
+	}
+
+	private finishPointerDrag(event: PointerEvent): void {
+		const state = this.pointerDragState;
+		if (!state || event.pointerId !== state.pointerId) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (state.handleEl.hasPointerCapture(event.pointerId)) {
+			state.handleEl.releasePointerCapture(event.pointerId);
+		}
+		const sourceId = this.draggedId ?? state.id;
+		const targetId = this.dragOverId;
+		const position = this.dropPosition;
+		const shouldMove =
+			!!targetId && !this.isNoopMove(sourceId, targetId, position);
+		this.pointerDragState = null;
+		this.clearAllDragState();
+		if (
+			shouldMove &&
+			targetId &&
+			moveLeafRelative(this.plugin.app, sourceId, targetId, position)
+		) {
+			this.pendingMovedId = sourceId;
+			this.scheduleRefresh();
+		}
+	}
+
+	private cancelPointerDrag(event: PointerEvent): void {
+		const state = this.pointerDragState;
+		if (!state || event.pointerId !== state.pointerId) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (state.handleEl.hasPointerCapture(event.pointerId)) {
+			state.handleEl.releasePointerCapture(event.pointerId);
+		}
+		this.pointerDragState = null;
+		this.clearAllDragState();
 	}
 
 	private createLayoutButton(
@@ -521,12 +628,21 @@ export class TabController {
 		el: HTMLElement,
 		event: DragEvent
 	): void {
+		this.setDropTargetAtPoint(id, el, event.clientX, event.clientY);
+	}
+
+	private setDropTargetAtPoint(
+		id: string,
+		el: HTMLElement,
+		x: number,
+		y: number
+	): void {
 		const rect = el.getBoundingClientRect();
 		const rawPosition = this.isGridLikeLayout()
-			? event.clientX > rect.left + rect.width / 2
+			? x > rect.left + rect.width / 2
 				? "after"
 				: "before"
-			: event.clientY > rect.top + rect.height / 2
+			: y > rect.top + rect.height / 2
 				? "after"
 				: "before";
 		const target = this.normalizeDropTarget(id, rawPosition);
@@ -542,6 +658,42 @@ export class TabController {
 		this.dragOverId = target.id;
 		this.dropPosition = target.position;
 		this.showDropIndicator(targetRow.el, target.position, targetKey);
+	}
+
+	private updatePointerDropTarget(x: number, y: number): void {
+		if (this.isFilterActive()) return;
+		if (this.isMasonryLayout()) {
+			if (this.isInsideDraggedRow(x, y)) {
+				this.clearDropTarget();
+				return;
+			}
+			const slot = this.getMasonryDropSlotAtPoint(x, y);
+			if (!slot) {
+				this.clearDropTarget();
+				return;
+			}
+			this.setMasonryDropTarget(slot);
+			return;
+		}
+
+		const rowEl = this.getRowAtPoint(x, y);
+		const rowId = rowEl?.dataset.leafId;
+		if (rowEl && rowId && this.draggedId && this.draggedId !== rowId) {
+			this.setDropTargetAtPoint(rowId, rowEl, x, y);
+			return;
+		}
+
+		const groupEndId = this.getGroupEndTargetAtCoordinates(x, y, null);
+		if (groupEndId && groupEndId !== this.draggedId) {
+			this.setGroupDropTarget(groupEndId);
+			return;
+		}
+
+		if (this.canDropAtListEndCoordinates(x, y, null)) {
+			this.setGroupDropTarget(this.lastGroupEndId as string);
+			return;
+		}
+		this.clearDropTarget();
 	}
 
 	private normalizeDropTarget(
@@ -631,6 +783,14 @@ export class TabController {
 		this.indicatorKey = null;
 		this.indicatorTargetKey = null;
 		this.dropIndicatorEl.toggleClass("is-visible", false);
+	}
+
+	private clearDropTarget(): void {
+		this.clearGroupDropTarget();
+		this.hideDropIndicator();
+		this.dragOverId = null;
+		this.dropPosition = "before";
+		this.masonryIndicatorRect = null;
 	}
 
 	private handleListDragOver(event: DragEvent): void {
@@ -960,8 +1120,20 @@ export class TabController {
 	}
 
 	private canDropAtListEnd(event: DragEvent): boolean {
+		return this.canDropAtListEndCoordinates(
+			event.clientX,
+			event.clientY,
+			event.target
+		);
+	}
+
+	private canDropAtListEndCoordinates(
+		x: number,
+		y: number,
+		target: EventTarget | null
+	): boolean {
 		if (!this.draggedId || !this.lastGroupEndId) return false;
-		if (this.isInsideDropTarget(event.target)) return false;
+		if (this.isInsideDropTarget(target)) return false;
 		const geometry = this.getDragGeometry();
 		const lastRow = geometry.rows.find(
 			(row) => row.id === this.lastGroupEndId
@@ -969,35 +1141,47 @@ export class TabController {
 		if (!lastRow) return false;
 		const listRect = geometry.listRect;
 		if (
-			event.clientX < listRect.left ||
-			event.clientX > listRect.right ||
-			event.clientY < listRect.top ||
-			event.clientY > listRect.bottom
+			x < listRect.left ||
+			x > listRect.right ||
+			y < listRect.top ||
+			y > listRect.bottom
 		) {
 			return false;
 		}
 
 		const lastRect = lastRow.rect;
-		if (event.clientY >= lastRect.bottom) return true;
+		if (y >= lastRect.bottom) return true;
 		return (
 			this.isGridLikeLayout() &&
-			event.clientY >= lastRect.top &&
-			event.clientY < lastRect.bottom &&
-			event.clientX > lastRect.right
+			y >= lastRect.top &&
+			y < lastRect.bottom &&
+			x > lastRect.right
 		);
 	}
 
 	private getGroupEndTargetAtPoint(event: DragEvent): string | null {
+		return this.getGroupEndTargetAtCoordinates(
+			event.clientX,
+			event.clientY,
+			event.target
+		);
+	}
+
+	private getGroupEndTargetAtCoordinates(
+		x: number,
+		y: number,
+		target: EventTarget | null
+	): string | null {
 		if (!this.draggedId) return null;
-		if (this.isInsideDropTarget(event.target)) return null;
+		if (this.isInsideDropTarget(target)) return null;
 
 		const geometry = this.getDragGeometry();
 		const listRect = geometry.listRect;
 		if (
-			event.clientX < listRect.left ||
-			event.clientX > listRect.right ||
-			event.clientY < listRect.top ||
-			event.clientY > listRect.bottom
+			x < listRect.left ||
+			x > listRect.right ||
+			y < listRect.top ||
+			y > listRect.bottom
 		) {
 			return null;
 		}
@@ -1005,24 +1189,23 @@ export class TabController {
 		const isGridLikeLayout = this.isGridLikeLayout();
 		for (const { endId, rowRect, separatorRect } of geometry.separators) {
 			if (
-				event.clientX >= separatorRect.left &&
-				event.clientX <= separatorRect.right &&
-				event.clientY >= separatorRect.top &&
-				event.clientY <= separatorRect.bottom
+				x >= separatorRect.left &&
+				x <= separatorRect.right &&
+				y >= separatorRect.top &&
+				y <= separatorRect.bottom
 			) {
 				return null;
 			}
 
 			const inBottomBlank =
-				event.clientY >= rowRect.bottom &&
-				event.clientY < separatorRect.top;
+				y >= rowRect.bottom && y < separatorRect.top;
 			if (inBottomBlank) return endId;
 
 			const inGridTrailingBlank =
 				isGridLikeLayout &&
-				event.clientY >= rowRect.top &&
-				event.clientY < separatorRect.top &&
-				event.clientX > rowRect.right;
+				y >= rowRect.top &&
+				y < separatorRect.top &&
+				x > rowRect.right;
 			if (inGridTrailingBlank) return endId;
 		}
 		return null;
@@ -1033,7 +1216,56 @@ export class TabController {
 		return !!target.closest(".lite-tabs-item, .lite-tabs-group-separator");
 	}
 
+	private updatePointerAutoScroll(y: number): void {
+		const rect = this.listEl.getBoundingClientRect();
+		const edgeSize = Math.min(56, rect.height / 3);
+		let velocity = 0;
+		if (y < rect.top + edgeSize) {
+			velocity = -this.getAutoScrollVelocity(rect.top + edgeSize - y);
+		} else if (y > rect.bottom - edgeSize) {
+			velocity = this.getAutoScrollVelocity(y - (rect.bottom - edgeSize));
+		}
+		this.autoScrollVelocity = velocity;
+		if (velocity === 0) {
+			this.stopAutoScroll();
+			return;
+		}
+		if (this.autoScrollFrame !== null) return;
+		this.autoScrollFrame = requestAnimationFrame(() => {
+			this.stepAutoScroll();
+		});
+	}
+
+	private getAutoScrollVelocity(distance: number): number {
+		return Math.min(14, Math.max(3, distance / 4));
+	}
+
+	private stepAutoScroll(): void {
+		this.autoScrollFrame = null;
+		const state = this.pointerDragState;
+		if (!state || this.autoScrollVelocity === 0) return;
+		const previousScrollTop = this.listEl.scrollTop;
+		this.listEl.scrollTop += this.autoScrollVelocity;
+		if (this.listEl.scrollTop !== previousScrollTop) {
+			this.invalidateDragGeometry();
+			this.updatePointerDropTarget(state.lastX, state.lastY);
+		}
+		this.autoScrollFrame = requestAnimationFrame(() => {
+			this.stepAutoScroll();
+		});
+	}
+
+	private stopAutoScroll(): void {
+		this.autoScrollVelocity = 0;
+		if (this.autoScrollFrame !== null) {
+			cancelAnimationFrame(this.autoScrollFrame);
+			this.autoScrollFrame = null;
+		}
+	}
+
 	private clearAllDragState(): void {
+		this.pointerDragState = null;
+		this.stopAutoScroll();
 		this.dragSourceEl?.toggleClass("is-drag-source", false);
 		this.dragSourceEl = null;
 		this.invalidateDragGeometry();
@@ -1222,13 +1454,17 @@ export class TabController {
 
 	private applyFilter(): void {
 		const hasFilter = this.isFilterActive();
+		const allowNativeDrag =
+			!hasFilter && !document.body.hasClass("is-mobile");
 		let visibleCount = 0;
 		for (const row of this.rows.values()) {
 			const visible =
 				!hasFilter ||
 				row.item.title.toLocaleLowerCase().includes(this.filterQuery);
 			row.el.toggle(visible);
-			row.el.draggable = !hasFilter;
+			row.el.draggable = allowNativeDrag;
+			row.iconEl.draggable = allowNativeDrag;
+			row.titleEl.draggable = allowNativeDrag;
 			if (visible) visibleCount += 1;
 		}
 		for (const { el } of this.groupSeparators) {
