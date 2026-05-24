@@ -14,6 +14,7 @@ import {
 interface RowRecord {
 	item: TabItem;
 	el: HTMLElement;
+	handleEl: HTMLElement;
 	iconEl: HTMLElement;
 	titleEl: HTMLElement;
 	closeEl: HTMLElement;
@@ -287,12 +288,17 @@ export class TabController {
 		el.dataset.leafId = item.id;
 		el.draggable = true;
 
+		const handleEl = el.createDiv({ cls: "lite-tabs-drag-handle" });
 		const iconEl = el.createDiv({ cls: "lite-tabs-icon" });
 		const titleEl = el.createDiv({ cls: "lite-tabs-title" });
 		const closeEl = el.createDiv({ cls: "lite-tabs-close" });
+		handleEl.draggable = false;
 		iconEl.draggable = true;
 		titleEl.draggable = true;
 		closeEl.draggable = false;
+		handleEl.setAttr("aria-label", "Drag tab");
+		handleEl.setAttr("title", "Drag tab");
+		setIcon(handleEl, "grip-vertical");
 		renderIcon(closeEl, "x");
 
 		el.addEventListener("mousedown", (event) => {
@@ -345,6 +351,7 @@ export class TabController {
 		const row = {
 			item,
 			el,
+			handleEl,
 			iconEl,
 			titleEl,
 			closeEl,
