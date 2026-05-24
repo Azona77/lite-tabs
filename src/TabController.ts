@@ -108,6 +108,7 @@ export class TabController {
 	private pointerDragState: PointerDragState | null = null;
 	private autoScrollFrame: number | null = null;
 	private autoScrollVelocity = 0;
+	private overflowFrame: number | null = null;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -144,6 +145,7 @@ export class TabController {
 		this.resizeObserver = new ResizeObserver(() => {
 			this.invalidateDragGeometry();
 			this.scheduleMasonryLayout();
+			this.scheduleListOverflowCheck();
 		});
 		this.resizeObserver.observe(this.listEl);
 		this.syncLayoutButtons();
@@ -159,6 +161,10 @@ export class TabController {
 		if (this.masonryFrame !== null) {
 			cancelAnimationFrame(this.masonryFrame);
 			this.masonryFrame = null;
+		}
+		if (this.overflowFrame !== null) {
+			cancelAnimationFrame(this.overflowFrame);
+			this.overflowFrame = null;
 		}
 		this.stopAutoScroll();
 		this.resizeObserver?.disconnect();
@@ -258,6 +264,7 @@ export class TabController {
 		this.applyFilter();
 		this.scheduleMasonryLayout();
 		this.restoreScrollTop(previousScrollTop);
+		this.scheduleListOverflowCheck();
 	}
 
 	syncActive(items?: TabItem[]): void {
@@ -1341,6 +1348,21 @@ export class TabController {
 		});
 	}
 
+	private scheduleListOverflowCheck(): void {
+		if (this.overflowFrame !== null) return;
+		this.overflowFrame = requestAnimationFrame(() => {
+			this.overflowFrame = null;
+			this.syncListOverflowState();
+		});
+	}
+
+	private syncListOverflowState(): void {
+		const tolerance = 1;
+		const isOverflowing =
+			this.listEl.scrollHeight > this.listEl.clientHeight + tolerance;
+		this.listEl.toggleClass("is-overflowing", isOverflowing);
+	}
+
 	private applyMasonryLayout(): void {
 		if (!this.isMasonryLayout()) {
 			this.clearMasonrySpans();
@@ -1365,6 +1387,7 @@ export class TabController {
 		}
 		this.invalidateDragGeometry();
 		this.applyPendingMoveFeedback();
+		this.scheduleListOverflowCheck();
 	}
 
 	private clearMasonrySpans(): void {
@@ -1373,6 +1396,7 @@ export class TabController {
 		}
 		this.invalidateDragGeometry();
 		this.applyPendingMoveFeedback();
+		this.scheduleListOverflowCheck();
 	}
 
 	private applyPendingMoveFeedback(): void {
@@ -1479,6 +1503,7 @@ export class TabController {
 		);
 		this.emptyEl.toggle(visibleCount === 0);
 		this.invalidateDragGeometry();
+		this.scheduleListOverflowCheck();
 	}
 
 	private isFilterActive(): boolean {

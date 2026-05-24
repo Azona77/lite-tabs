@@ -220,9 +220,9 @@ body.is-mobile.lite-tabs-mobile-stack-bottom.lite-tabs-layout-list
 }
 
 body.is-mobile.lite-tabs-mobile-stack-bottom.lite-tabs-layout-card
-    .lite-tabs-list,
+    .lite-tabs-list:not(.is-overflowing),
 body.is-mobile.lite-tabs-mobile-stack-bottom.lite-tabs-layout-masonry
-    .lite-tabs-list {
+    .lite-tabs-list:not(.is-overflowing) {
     align-content: end;
 }
 
@@ -385,7 +385,13 @@ body.is-mobile .lite-tabs-drag-handle {
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-item,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-item {
+    grid-template-columns: 20px minmax(0, 1fr);
     padding: 26px 8px 8px;
+}
+
+body.is-mobile.lite-tabs-layout-card.lite-tabs-hide-icons .lite-tabs-item,
+body.is-mobile.lite-tabs-layout-masonry.lite-tabs-hide-icons .lite-tabs-item {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-drag-handle,
