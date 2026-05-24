@@ -8,11 +8,11 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 
 ## Features
 
-- Vertical list or card-style tab view.
+- Vertical list, card-style, or masonry-style tab view.
 - Local title filtering for open tabs.
 - Click to activate a tab, middle-click or use the close button to close a tab, and drag to reorder tabs.
 - Minimal display options: hide file icons, toolbar, or inactive tabs.
-- Customizable styles: size of the vertical list or card view, font size, divider size, and basic highlight style.
+- Customizable styles: size of the vertical list, card, or masonry view, font size, divider size, and basic highlight style.
 
 ## Performance
 
@@ -20,6 +20,7 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 - Uses `requestAnimationFrame` to batch refreshes.
 - Reuses existing item DOM elements whenever possible.
 - Updates only the active-state class when the active tab changes.
+- Masonry layout uses measured CSS grid spans and batched refreshes instead of a persistent layout cache.
 - Does not maintain large persistent caches or synchronize custom group titles.
 
 ## Security boundary
@@ -62,10 +63,10 @@ Lite Tabs 是一个轻量级 Obsidian 插件，用独立侧边栏面板展示当
 
 ## 功能
 
-- 垂直列表/卡片标签页视图。
+- 垂直列表/卡片/瀑布流标签页视图。
 - 单击激活，中键或关闭按钮关闭，拖动排序。
 - 精简样式选项：隐藏文件图标、工具栏、非活跃标签页。
-- 自定义样式：垂直列表/卡片视图尺寸、字体、分割线尺寸、基础高亮样式
+- 自定义样式：垂直列表/卡片/瀑布流视图尺寸、字体、分割线尺寸、基础高亮样式
 
 ## 性能
 
@@ -73,6 +74,7 @@ Lite Tabs 是一个轻量级 Obsidian 插件，用独立侧边栏面板展示当
 - 使用 `requestAnimationFrame` 合并刷新。
 - 尽量复用已有条目 DOM。
 - 活跃标签变化只更新活跃状态 class。
+- 瀑布流布局使用测量后的 CSS grid span 和合并刷新，不维护持久布局缓存。
 - 不维护大体量持久缓存，不同步自定义分组标题。
 
 ## 安装
