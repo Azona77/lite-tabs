@@ -1,5 +1,6 @@
 import { Menu, WorkspaceLeaf, setIcon } from "obsidian";
 import LiteTabsPlugin from "./main";
+import { LiteTabsLayoutStyle } from "./settings";
 import {
 	TabItem,
 	closeOtherLeavesInGroup,
@@ -55,6 +56,7 @@ export class TabController {
 	private toolbarEl: HTMLElement;
 	private listButtonEl: HTMLButtonElement;
 	private cardButtonEl: HTMLButtonElement;
+	private masonryButtonEl: HTMLButtonElement;
 	private iconButtonEl: HTMLButtonElement;
 	private inactiveTabsButtonEl: HTMLButtonElement;
 	private refreshButtonEl: HTMLButtonElement;
@@ -79,6 +81,8 @@ export class TabController {
 	private indicatorTargetKey: string | null = null;
 	private dragGeometry: DragGeometry | null = null;
 	private filterQuery = "";
+	private masonryFrame: number | null = null;
+	private resizeObserver: ResizeObserver | null = null;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -87,6 +91,10 @@ export class TabController {
 		this.toolbarEl = this.rootEl.createDiv({ cls: "lite-tabs-toolbar" });
 		this.listButtonEl = this.createLayoutButton("list", "List view");
 		this.cardButtonEl = this.createLayoutButton("card", "Card view");
+		this.masonryButtonEl = this.createLayoutButton(
+			"masonry",
+			"Masonry view"
+		);
 		this.iconButtonEl = this.createIconButton();
 		this.inactiveTabsButtonEl = this.createInactiveTabsButton();
 		this.refreshButtonEl = this.createRefreshButton();
@@ -108,6 +116,11 @@ export class TabController {
 		this.dropIndicatorEl = this.listEl.createDiv({
 			cls: "lite-tabs-drop-indicator",
 		});
+		this.resizeObserver = new ResizeObserver(() => {
+			this.invalidateDragGeometry();
+			this.scheduleMasonryLayout();
+		});
+		this.resizeObserver.observe(this.listEl);
 		this.syncLayoutButtons();
 		this.syncIconButton();
 		this.syncInactiveTabsButton();
@@ -118,6 +131,12 @@ export class TabController {
 			cancelAnimationFrame(this.frame);
 			this.frame = null;
 		}
+		if (this.masonryFrame !== null) {
+			cancelAnimationFrame(this.masonryFrame);
+			this.masonryFrame = null;
+		}
+		this.resizeObserver?.disconnect();
+		this.resizeObserver = null;
 		this.rows.clear();
 		this.rootEl.remove();
 	}
@@ -211,6 +230,7 @@ export class TabController {
 		this.syncIconButton();
 		this.syncInactiveTabsButton();
 		this.applyFilter();
+		this.scheduleMasonryLayout();
 		this.restoreScrollTop(previousScrollTop);
 	}
 
@@ -243,10 +263,10 @@ export class TabController {
 	}
 
 	private getLayoutSignature(): string {
-		if (this.plugin.settings.layoutStyle !== "card") {
+		if (!this.isGridLikeLayout()) {
 			return "list";
 		}
-		return `card:${this.getCardColumnCount()}`;
+		return `${this.plugin.settings.layoutStyle}:${this.getCardColumnCount()}`;
 	}
 
 	private createRow(item: TabItem): RowRecord {
@@ -335,7 +355,7 @@ export class TabController {
 	}
 
 	private createLayoutButton(
-		style: "list" | "card",
+		style: LiteTabsLayoutStyle,
 		label: string
 	): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
@@ -345,7 +365,7 @@ export class TabController {
 				title: label,
 			},
 		});
-		setIcon(button, style === "list" ? "list" : "layout-grid");
+		setIcon(button, this.getLayoutIcon(style));
 		button.addEventListener("click", async () => {
 			if (this.plugin.settings.layoutStyle === style) return;
 			this.plugin.settings.layoutStyle = style;
@@ -357,10 +377,19 @@ export class TabController {
 		return button;
 	}
 
+	private getLayoutIcon(style: LiteTabsLayoutStyle): string {
+		if (style === "list") return "list";
+		if (style === "masonry") return "layout-dashboard";
+		return "layout-grid";
+	}
+
 	private syncLayoutButtons(): void {
 		const isList = this.plugin.settings.layoutStyle === "list";
+		const isCard = this.plugin.settings.layoutStyle === "card";
+		const isMasonry = this.plugin.settings.layoutStyle === "masonry";
 		this.listButtonEl.toggleClass("is-active", isList);
-		this.cardButtonEl.toggleClass("is-active", !isList);
+		this.cardButtonEl.toggleClass("is-active", isCard);
+		this.masonryButtonEl.toggleClass("is-active", isMasonry);
 	}
 
 	private createIconButton(): HTMLButtonElement {
@@ -375,6 +404,7 @@ export class TabController {
 			this.plugin.settings.showIcons = !this.plugin.settings.showIcons;
 			this.plugin.applySettings();
 			this.syncIconButton();
+			this.scheduleMasonryLayout();
 			await this.plugin.saveSettings();
 		});
 		return button;
@@ -438,6 +468,7 @@ export class TabController {
 			this.filterQuery = input.value.trim().toLocaleLowerCase();
 			this.clearAllDragState();
 			this.applyFilter();
+			this.scheduleMasonryLayout();
 		});
 		input.addEventListener("keydown", (event) => {
 			if (event.key !== "Escape" || !input.value) return;
@@ -445,6 +476,7 @@ export class TabController {
 			input.value = "";
 			this.filterQuery = "";
 			this.applyFilter();
+			this.scheduleMasonryLayout();
 		});
 		return input;
 	}
@@ -470,8 +502,7 @@ export class TabController {
 		event: DragEvent
 	): void {
 		const rect = el.getBoundingClientRect();
-		const isCardLayout = this.plugin.settings.layoutStyle === "card";
-		const rawPosition = isCardLayout
+		const rawPosition = this.isGridLikeLayout()
 			? event.clientX > rect.left + rect.width / 2
 				? "after"
 				: "before"
@@ -535,19 +566,19 @@ export class TabController {
 		this.indicatorTargetKey = targetKey;
 		const rect = this.getCachedElementRect(el);
 		const listRect = this.getDragGeometry().listRect;
-		const isCardLayout = this.plugin.settings.layoutStyle === "card";
-		const x = isCardLayout
+		const isGridLikeLayout = this.isGridLikeLayout();
+		const x = isGridLikeLayout
 			? position === "before"
 				? rect.left - listRect.left + this.listEl.scrollLeft
 				: rect.right - listRect.left + this.listEl.scrollLeft
 			: 6 + this.listEl.scrollLeft;
-		const y = isCardLayout
+		const y = isGridLikeLayout
 			? rect.top - listRect.top + this.listEl.scrollTop
 			: (position === "before" ? rect.top : rect.bottom) -
 				listRect.top +
 				this.listEl.scrollTop;
-		const width = isCardLayout ? 2 : Math.max(0, listRect.width - 12);
-		const height = isCardLayout ? rect.height : 2;
+		const width = isGridLikeLayout ? 2 : Math.max(0, listRect.width - 12);
+		const height = isGridLikeLayout ? rect.height : 2;
 		const key = `${Math.round(x)}:${Math.round(y)}:${Math.round(width)}:${Math.round(height)}`;
 		if (this.indicatorKey === key) return;
 		this.indicatorKey = key;
@@ -675,7 +706,7 @@ export class TabController {
 		const lastRect = lastRow.rect;
 		if (event.clientY >= lastRect.bottom) return true;
 		return (
-			this.plugin.settings.layoutStyle === "card" &&
+			this.isGridLikeLayout() &&
 			event.clientY >= lastRect.top &&
 			event.clientY < lastRect.bottom &&
 			event.clientX > lastRect.right
@@ -697,7 +728,7 @@ export class TabController {
 			return null;
 		}
 
-		const isCardLayout = this.plugin.settings.layoutStyle === "card";
+		const isGridLikeLayout = this.isGridLikeLayout();
 		for (const { endId, rowRect, separatorRect } of geometry.separators) {
 			if (
 				event.clientX >= separatorRect.left &&
@@ -713,12 +744,12 @@ export class TabController {
 				event.clientY < separatorRect.top;
 			if (inBottomBlank) return endId;
 
-			const inCardTrailingBlank =
-				isCardLayout &&
+			const inGridTrailingBlank =
+				isGridLikeLayout &&
 				event.clientY >= rowRect.top &&
 				event.clientY < separatorRect.top &&
 				event.clientX > rowRect.right;
-			if (inCardTrailingBlank) return endId;
+			if (inGridTrailingBlank) return endId;
 		}
 		return null;
 	}
@@ -793,6 +824,60 @@ export class TabController {
 
 	private invalidateDragGeometry(): void {
 		this.dragGeometry = null;
+	}
+
+	private scheduleMasonryLayout(): void {
+		if (this.masonryFrame !== null) return;
+		this.masonryFrame = requestAnimationFrame(() => {
+			this.masonryFrame = null;
+			this.applyMasonryLayout();
+		});
+	}
+
+	private applyMasonryLayout(): void {
+		if (!this.isMasonryLayout()) {
+			this.clearMasonrySpans();
+			return;
+		}
+
+		const styles = getComputedStyle(this.listEl);
+		const rowHeight = parseFloat(styles.gridAutoRows);
+		const rowGap = parseFloat(styles.rowGap);
+		if (!Number.isFinite(rowHeight) || rowHeight <= 0) return;
+		const gap = Number.isFinite(rowGap) ? rowGap : 0;
+
+		for (const row of this.rows.values()) {
+			if (!row.el.isShown()) continue;
+			row.el.style.removeProperty("--lite-tabs-masonry-span");
+			const height = Math.max(row.el.scrollHeight, row.el.offsetHeight);
+			const span = Math.max(
+				1,
+				Math.ceil((height + gap) / (rowHeight + gap))
+			);
+			row.el.style.setProperty(
+				"--lite-tabs-masonry-span",
+				String(span)
+			);
+		}
+		this.invalidateDragGeometry();
+	}
+
+	private clearMasonrySpans(): void {
+		for (const row of this.rows.values()) {
+			row.el.style.removeProperty("--lite-tabs-masonry-span");
+		}
+		this.invalidateDragGeometry();
+	}
+
+	private isMasonryLayout(): boolean {
+		return this.plugin.settings.layoutStyle === "masonry";
+	}
+
+	private isGridLikeLayout(): boolean {
+		return (
+			this.plugin.settings.layoutStyle === "card" ||
+			this.plugin.settings.layoutStyle === "masonry"
+		);
 	}
 
 	private updateRow(row: RowRecord, item: TabItem): void {

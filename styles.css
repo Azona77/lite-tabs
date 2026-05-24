@@ -17,6 +17,20 @@ body.lite-tabs-layout-card .lite-tabs-list {
     padding: 8px;
 }
 
+body.lite-tabs-layout-masonry .lite-tabs-list {
+    align-content: start;
+    display: grid;
+    gap: var(--lite-tabs-card-gap, 6px);
+    grid-auto-flow: dense;
+    grid-auto-rows: 4px;
+    grid-template-columns: repeat(
+        auto-fill,
+        minmax(min(100%, var(--lite-tabs-card-width, 180px)), 1fr)
+    );
+    height: 100%;
+    padding: 8px;
+}
+
 body.lite-tabs-layout-card .lite-tabs-item {
     align-items: start;
     border: 1px solid var(--background-modifier-border);
@@ -24,6 +38,19 @@ body.lite-tabs-layout-card .lite-tabs-item {
     grid-template-columns: 20px minmax(0, 1fr);
     box-sizing: border-box;
     height: var(--lite-tabs-card-height, 56px);
+    overflow: hidden;
+    padding: 8px;
+}
+
+body.lite-tabs-layout-masonry .lite-tabs-item {
+    align-items: start;
+    align-self: start;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    box-sizing: border-box;
+    grid-row-end: span var(--lite-tabs-masonry-span, 10);
+    grid-template-columns: 20px minmax(0, 1fr);
+    min-height: 0;
     overflow: hidden;
     padding: 8px;
 }
@@ -36,8 +63,25 @@ body.lite-tabs-layout-card .lite-tabs-title {
     white-space: normal;
 }
 
+body.lite-tabs-layout-masonry .lite-tabs-title {
+    font-size: var(--lite-tabs-card-font-size, 13px);
+    line-height: 1.35;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
 body.lite-tabs-layout-card .lite-tabs-group-separator,
+body.lite-tabs-layout-masonry .lite-tabs-group-separator,
 body.lite-tabs-layout-card .lite-tabs-empty {
+    grid-column: 1 / -1;
+}
+
+body.lite-tabs-layout-masonry .lite-tabs-group-separator {
+    display: none;
+}
+
+body.lite-tabs-layout-masonry .lite-tabs-empty {
     grid-column: 1 / -1;
 }
 
@@ -279,6 +323,12 @@ body.lite-tabs-layout-card .lite-tabs-close {
     transform: scale(0.92);
 }
 
+body.lite-tabs-layout-masonry .lite-tabs-close {
+    right: 5px;
+    top: 5px;
+    transform: scale(0.92);
+}
+
 .lite-tabs-item:hover .lite-tabs-close {
     opacity: 1;
     pointer-events: auto;
@@ -286,7 +336,9 @@ body.lite-tabs-layout-card .lite-tabs-close {
 }
 
 body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close,
-body.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close {
+body.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,
+body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close,
+body.lite-tabs-layout-masonry .lite-tabs-item.is-active .lite-tabs-close {
     transform: scale(1);
 }
 

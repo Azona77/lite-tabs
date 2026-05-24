@@ -7,10 +7,12 @@ import {
 } from "obsidian";
 import LiteTabsPlugin from "./main";
 
+export type LiteTabsLayoutStyle = "list" | "card" | "masonry";
+
 export interface LiteTabsSettings {
 	hideNativeTabs: boolean;
 	hideToolbar: boolean;
-	layoutStyle: "list" | "card";
+	layoutStyle: LiteTabsLayoutStyle;
 	showIcons: boolean;
 	separatorThickness: number;
 	separatorMarginY: number;
@@ -97,6 +99,14 @@ function readNumber(
 	return maximum === undefined ? bounded : Math.min(maximum, bounded);
 }
 
+function readLayoutStyle(source: SettingsRecord): LiteTabsLayoutStyle {
+	return source.layoutStyle === "card" ||
+		source.layoutStyle === "list" ||
+		source.layoutStyle === "masonry"
+		? source.layoutStyle
+		: DEFAULT_SETTINGS.layoutStyle;
+}
+
 export function normalizeSettings(data: unknown): LiteTabsSettings {
 	const source = isSettingsRecord(data) ? data : {};
 	return {
@@ -110,10 +120,7 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 			"hideToolbar",
 			DEFAULT_SETTINGS.hideToolbar
 		),
-		layoutStyle:
-			source.layoutStyle === "card" || source.layoutStyle === "list"
-				? source.layoutStyle
-				: DEFAULT_SETTINGS.layoutStyle,
+		layoutStyle: readLayoutStyle(source),
 		showIcons: readBoolean(source, "showIcons", DEFAULT_SETTINGS.showIcons),
 		separatorThickness: readNumber(
 			source,
@@ -198,10 +205,13 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 				dropdown
 					.addOption("list", "List")
 					.addOption("card", "Card")
+					.addOption("masonry", "Masonry")
 					.setValue(this.plugin.settings.layoutStyle)
 					.onChange(async (value) => {
 						this.plugin.settings.layoutStyle =
-							value === "card" ? "card" : "list";
+							value === "card" || value === "masonry"
+								? value
+								: "list";
 						this.plugin.applySettings();
 						this.plugin.refreshViews(true);
 						await this.plugin.saveSettings();
@@ -217,6 +227,7 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.showIcons = value;
 						this.plugin.applySettings();
+						this.plugin.refreshViews(true);
 						await this.plugin.saveSettings();
 					});
 			});
@@ -286,7 +297,7 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 			18,
 			1
 		);
-		new Setting(containerEl).setName("Card").setHeading();
+		new Setting(containerEl).setName("Card and masonry").setHeading();
 
 		this.addNumberSetting(
 			containerEl,
@@ -310,11 +321,12 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 		this.addNumberSetting(
 			containerEl,
 			"Card font size",
-			"Title font size in card view.",
+			"Title font size in card and masonry views.",
 			"cardFontSize",
 			10,
 			20,
-			1
+			1,
+			true
 		);
 		this.addNumberSetting(
 			containerEl,

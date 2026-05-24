@@ -75,6 +75,7 @@ export default class LiteTabsPlugin extends Plugin {
 		document.body.removeClass("lite-tabs-hide-native");
 		document.body.removeClass("lite-tabs-layout-card");
 		document.body.removeClass("lite-tabs-layout-list");
+		document.body.removeClass("lite-tabs-layout-masonry");
 		document.body.removeClass("lite-tabs-hide-icons");
 		document.body.removeClass("lite-tabs-hide-toolbar");
 		document.body.removeClass("lite-tabs-active-background");
@@ -102,6 +103,10 @@ export default class LiteTabsPlugin extends Plugin {
 		document.body.toggleClass(
 			"lite-tabs-layout-list",
 			this.settings.layoutStyle === "list"
+		);
+		document.body.toggleClass(
+			"lite-tabs-layout-masonry",
+			this.settings.layoutStyle === "masonry"
 		);
 		document.body.toggleClass(
 			"lite-tabs-hide-icons",
