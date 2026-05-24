@@ -455,6 +455,7 @@ export class TabController {
 		event: PointerEvent
 	): void {
 		if (!document.body.hasClass("is-mobile")) return;
+		if (!this.plugin.settings.showMobileDragHandles) return;
 		if (event.button !== 0 || this.isFilterActive()) return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -1426,6 +1427,7 @@ export class TabController {
 				)
 			: 0;
 		this.listEl.toggleClass("is-overflowing", isOverflowing);
+		this.listEl.toggleClass("is-bottom-stacked", spacer > 0);
 		this.setBottomSpacer(spacer);
 		if (spacer > 0 && this.listEl.scrollTop !== 0) {
 			this.listEl.scrollTop = 0;
@@ -1470,6 +1472,7 @@ export class TabController {
 	}
 
 	private resetBottomSpacer(): void {
+		this.listEl.toggleClass("is-bottom-stacked", false);
 		this.setBottomSpacer(0);
 	}
 

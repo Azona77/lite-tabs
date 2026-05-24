@@ -77,6 +77,7 @@ export default class LiteTabsPlugin extends Plugin {
 		document.body.removeClass("lite-tabs-layout-list");
 		document.body.removeClass("lite-tabs-layout-masonry");
 		document.body.removeClass("lite-tabs-mobile-stack-bottom");
+		document.body.removeClass("lite-tabs-mobile-hide-handles");
 		document.body.removeClass("lite-tabs-hide-icons");
 		document.body.removeClass("lite-tabs-hide-toolbar");
 		document.body.removeClass("lite-tabs-active-background");
@@ -112,6 +113,10 @@ export default class LiteTabsPlugin extends Plugin {
 		document.body.toggleClass(
 			"lite-tabs-mobile-stack-bottom",
 			this.settings.mobileStackBottom
+		);
+		document.body.toggleClass(
+			"lite-tabs-mobile-hide-handles",
+			!this.settings.showMobileDragHandles
 		);
 		document.body.toggleClass(
 			"lite-tabs-hide-icons",

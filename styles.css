@@ -216,6 +216,10 @@ body.is-mobile .lite-tabs-list {
     overscroll-behavior: contain;
 }
 
+body.is-mobile .lite-tabs-list.is-bottom-stacked {
+    overflow-y: hidden;
+}
+
 .lite-tabs-empty {
     color: var(--text-muted);
     font-size: var(--font-ui-small);
@@ -385,11 +389,24 @@ body.is-mobile .lite-tabs-item {
     min-height: max(var(--lite-tabs-list-item-height, 30px), 34px);
 }
 
+body.is-mobile.lite-tabs-mobile-hide-handles .lite-tabs-item {
+    grid-template-columns: 18px minmax(0, 1fr);
+}
+
+body.is-mobile.lite-tabs-mobile-hide-handles.lite-tabs-hide-icons
+    .lite-tabs-item {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 body.is-mobile .lite-tabs-drag-handle {
     display: flex;
     -webkit-user-select: none;
     user-select: none;
     touch-action: none;
+}
+
+body.is-mobile.lite-tabs-mobile-hide-handles .lite-tabs-drag-handle {
+    display: none;
 }
 
 body.is-mobile .lite-tabs-drag-handle *,
@@ -401,7 +418,7 @@ body.is-mobile .lite-tabs-drag-handle svg {
 body.is-mobile.lite-tabs-layout-card .lite-tabs-item,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-item {
     grid-template-columns: 20px minmax(0, 1fr);
-    padding: 26px 8px 8px;
+    padding: 8px 8px 8px 30px;
 }
 
 body.is-mobile.lite-tabs-layout-card.lite-tabs-hide-icons .lite-tabs-item,
@@ -409,13 +426,20 @@ body.is-mobile.lite-tabs-layout-masonry.lite-tabs-hide-icons .lite-tabs-item {
     grid-template-columns: minmax(0, 1fr);
 }
 
+body.is-mobile.lite-tabs-mobile-hide-handles.lite-tabs-layout-card
+    .lite-tabs-item,
+body.is-mobile.lite-tabs-mobile-hide-handles.lite-tabs-layout-masonry
+    .lite-tabs-item {
+    padding-left: 8px;
+}
+
 body.is-mobile.lite-tabs-layout-card .lite-tabs-drag-handle,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-drag-handle {
     left: 5px;
+    bottom: 6px;
     position: absolute;
-    right: 32px;
-    top: 5px;
-    width: auto;
+    top: 6px;
+    width: 18px;
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-drag-handle svg,
@@ -425,12 +449,12 @@ body.is-mobile.lite-tabs-layout-masonry .lite-tabs-drag-handle svg {
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-drag-handle::before,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-drag-handle::before {
-    border-top: 1px solid currentColor;
-    border-bottom: 1px solid currentColor;
+    border-left: 1px solid currentColor;
+    border-right: 1px solid currentColor;
     content: "";
-    height: 5px;
+    height: min(42px, 64%);
     opacity: 0.6;
-    width: min(56px, 58%);
+    width: 5px;
 }
 
 body.is-mobile .lite-tabs-item.is-active .lite-tabs-title {

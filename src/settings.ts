@@ -14,6 +14,7 @@ export interface LiteTabsSettings {
 	hideToolbar: boolean;
 	layoutStyle: LiteTabsLayoutStyle;
 	mobileStackBottom: boolean;
+	showMobileDragHandles: boolean;
 	showIcons: boolean;
 	separatorThickness: number;
 	separatorMarginY: number;
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideToolbar: false,
 	layoutStyle: "list",
 	mobileStackBottom: true,
+	showMobileDragHandles: true,
 	showIcons: true,
 	separatorThickness: 2,
 	separatorMarginY: 7,
@@ -127,6 +129,11 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 			source,
 			"mobileStackBottom",
 			DEFAULT_SETTINGS.mobileStackBottom
+		),
+		showMobileDragHandles: readBoolean(
+			source,
+			"showMobileDragHandles",
+			DEFAULT_SETTINGS.showMobileDragHandles
 		),
 		showIcons: readBoolean(source, "showIcons", DEFAULT_SETTINGS.showIcons),
 		separatorThickness: readNumber(
@@ -234,6 +241,20 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.mobileStackBottom = value;
 						this.plugin.applySettings();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Show mobile drag handles")
+			.setDesc("Mobile only. Show drag handles for touch sorting. Hide them for a cleaner scrolling surface.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.showMobileDragHandles)
+					.onChange(async (value) => {
+						this.plugin.settings.showMobileDragHandles = value;
+						this.plugin.applySettings();
+						this.plugin.refreshViews(true);
 						await this.plugin.saveSettings();
 					});
 			});
