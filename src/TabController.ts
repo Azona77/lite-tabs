@@ -64,9 +64,12 @@ interface MasonryDropSlot {
 interface PointerDragState {
 	id: string;
 	handleEl: HTMLElement;
+	sourceEl: HTMLElement;
 	pointerId: number;
 	lastX: number;
 	lastY: number;
+	previousHandleTouchAction: string;
+	previousSourceTouchAction: string;
 }
 
 export class TabController {
@@ -428,10 +431,15 @@ export class TabController {
 		this.pointerDragState = {
 			id,
 			handleEl,
+			sourceEl: el,
 			pointerId: event.pointerId,
 			lastX: event.clientX,
 			lastY: event.clientY,
+			previousHandleTouchAction: handleEl.style.touchAction,
+			previousSourceTouchAction: el.style.touchAction,
 		};
+		handleEl.style.touchAction = "none";
+		el.style.touchAction = "none";
 		this.draggedId = id;
 		this.dragSourceEl = el;
 		this.invalidateDragGeometry();
@@ -459,6 +467,7 @@ export class TabController {
 		if (state.handleEl.hasPointerCapture(event.pointerId)) {
 			state.handleEl.releasePointerCapture(event.pointerId);
 		}
+		this.restorePointerDragTouchAction(state);
 		const sourceId = this.draggedId ?? state.id;
 		const targetId = this.dragOverId;
 		const position = this.dropPosition;
@@ -484,8 +493,14 @@ export class TabController {
 		if (state.handleEl.hasPointerCapture(event.pointerId)) {
 			state.handleEl.releasePointerCapture(event.pointerId);
 		}
+		this.restorePointerDragTouchAction(state);
 		this.pointerDragState = null;
 		this.clearAllDragState();
+	}
+
+	private restorePointerDragTouchAction(state: PointerDragState): void {
+		state.handleEl.style.touchAction = state.previousHandleTouchAction;
+		state.sourceEl.style.touchAction = state.previousSourceTouchAction;
 	}
 
 	private createLayoutButton(

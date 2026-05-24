@@ -398,17 +398,23 @@ body.is-mobile.lite-tabs-layout-card .lite-tabs-drag-handle,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-drag-handle {
     left: 5px;
     position: absolute;
+    right: 32px;
     top: 5px;
+    width: auto;
 }
 
-body.is-mobile .lite-tabs-item.is-active .lite-tabs-title {
+body.is-mobile .lite-tabs-title {
     padding-right: 26px;
 }
 
-body.is-mobile .lite-tabs-item.is-active .lite-tabs-close {
-    opacity: 0.55;
+body.is-mobile .lite-tabs-close {
+    opacity: 0.42;
     pointer-events: auto;
     transform: translateY(-50%) scale(1);
+}
+
+body.is-mobile .lite-tabs-item.is-active .lite-tabs-close {
+    opacity: 0.62;
 }
 
 body.is-mobile .lite-tabs-drag-handle:active,
