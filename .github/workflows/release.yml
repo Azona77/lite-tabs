@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag to rebuild and attest"
         required: true
-        default: "1.1.0"
+        default: "1.1.1"
 
 permissions:
   contents: write
@@ -71,41 +71,16 @@ jobs:
 
           ### New
 
-          - Added a masonry-style tab layout.
-          - Masonry cards automatically adapt their height to tab title length.
+          - Added a mobile option to stack Lite Tabs at the bottom of the left sidebar for easier one-handed navigation.
 
-          ### Improved
+          ### Fixed
 
-          - Refined drag-and-drop behavior for masonry cards.
-          - Added clearer drop indicators for masonry sorting.
-          - Added short post-drop visual feedback so the moved tab is easier to locate after layout reflow.
-          - Kept masonry dependency-free, using measured CSS grid spans and batched refreshes.
+          - Removed the CSS `column-gap` usage that triggered Obsidian 1.11.4's partial `multicolumn` support warning.
 
           ### Notes
 
-          - Existing List and Card layouts remain unchanged.
-          - Masonry uses existing card-related appearance settings, including card width, font size, and gap.
-          - No vault file access, network access, clipboard access, or persistent layout cache was added.
-
-          ## 中文
-
-          ### 新增
-
-          - 新增瀑布流标签页布局。
-          - 瀑布流卡片会根据标签标题长度自动调整高度。
-
-          ### 改进
-
-          - 优化瀑布流卡片的拖动排序行为。
-          - 改进瀑布流排序时的落点提示。
-          - 新增短暂的拖动完成反馈，便于在布局重排后定位被移动的标签。
-          - 瀑布流实现不引入新依赖，使用测量后的 CSS grid span 与合并刷新。
-
-          ### 说明
-
-          - 现有列表和卡片布局保持不变。
-          - 瀑布流复用现有卡片相关外观设置，包括卡片宽度、字体大小和间距。
-          - 本版本未新增仓库文件访问、网络访问、剪贴板访问或持久布局缓存。
+          - The bottom-stack option applies to List, Card, and Masonry layouts on mobile only.
+          - Desktop layout behavior is unchanged.
           EOF
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \

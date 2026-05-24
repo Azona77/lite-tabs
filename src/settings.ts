@@ -13,6 +13,7 @@ export interface LiteTabsSettings {
 	hideNativeTabs: boolean;
 	hideToolbar: boolean;
 	layoutStyle: LiteTabsLayoutStyle;
+	mobileStackBottom: boolean;
 	showIcons: boolean;
 	separatorThickness: number;
 	separatorMarginY: number;
@@ -32,6 +33,7 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
 	hideToolbar: false,
 	layoutStyle: "list",
+	mobileStackBottom: false,
 	showIcons: true,
 	separatorThickness: 2,
 	separatorMarginY: 7,
@@ -121,6 +123,11 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 			DEFAULT_SETTINGS.hideToolbar
 		),
 		layoutStyle: readLayoutStyle(source),
+		mobileStackBottom: readBoolean(
+			source,
+			"mobileStackBottom",
+			DEFAULT_SETTINGS.mobileStackBottom
+		),
 		showIcons: readBoolean(source, "showIcons", DEFAULT_SETTINGS.showIcons),
 		separatorThickness: readNumber(
 			source,
@@ -214,6 +221,19 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 								: "list";
 						this.plugin.applySettings();
 						this.plugin.refreshViews(true);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Stack mobile tabs at bottom")
+			.setDesc("On mobile, align the Lite Tabs list, card, and masonry views to the bottom of the panel.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.mobileStackBottom)
+					.onChange(async (value) => {
+						this.plugin.settings.mobileStackBottom = value;
+						this.plugin.applySettings();
 						await this.plugin.saveSettings();
 					});
 			});

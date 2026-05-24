@@ -19,8 +19,8 @@ body.lite-tabs-layout-card .lite-tabs-list {
 
 body.lite-tabs-layout-masonry .lite-tabs-list {
     align-content: start;
-    column-gap: var(--lite-tabs-card-gap, 6px);
     display: grid;
+    gap: 0 var(--lite-tabs-card-gap, 6px);
     grid-auto-flow: dense;
     grid-auto-rows: 1px;
     grid-template-columns: repeat(
@@ -29,7 +29,6 @@ body.lite-tabs-layout-masonry .lite-tabs-list {
     );
     height: 100%;
     padding: 8px;
-    row-gap: 0;
 }
 
 body.lite-tabs-layout-card .lite-tabs-item {
@@ -207,6 +206,20 @@ button.lite-tabs-toolbar-button {
     overflow-y: auto;
     padding: 6px;
     position: relative;
+}
+
+body.is-mobile.lite-tabs-mobile-stack-bottom.lite-tabs-layout-list
+    .lite-tabs-list::before {
+    content: "";
+    display: block;
+    margin-top: auto;
+}
+
+body.is-mobile.lite-tabs-mobile-stack-bottom.lite-tabs-layout-card
+    .lite-tabs-list,
+body.is-mobile.lite-tabs-mobile-stack-bottom.lite-tabs-layout-masonry
+    .lite-tabs-list {
+    align-content: end;
 }
 
 .lite-tabs-empty {
