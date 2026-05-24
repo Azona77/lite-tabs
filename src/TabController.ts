@@ -50,10 +50,14 @@ interface DragGeometry {
 	separators: SeparatorGeometry[];
 }
 
-interface MasonryDropTarget {
+interface MasonryDropSlot {
 	id: string;
 	position: "before" | "after";
-	indicatorClientY: number | null;
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+	key: string;
 }
 
 export class TabController {
@@ -88,8 +92,9 @@ export class TabController {
 	private dragGeometry: DragGeometry | null = null;
 	private filterQuery = "";
 	private masonryFrame: number | null = null;
-	private masonryIndicatorClientY: number | null = null;
+	private masonryIndicatorRect: RectSnapshot | null = null;
 	private pendingMovedId: string | null = null;
+	private dropResultEl: HTMLElement | null = null;
 	private resizeObserver: ResizeObserver | null = null;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
@@ -510,29 +515,17 @@ export class TabController {
 		event: DragEvent
 	): void {
 		const rect = el.getBoundingClientRect();
-		let indicatorClientY: number | null = null;
-		const rawPosition = this.isMasonryLayout()
-			? this.getMasonryDropTarget(id, rect, event)
-			: this.isGridLikeLayout()
+		const rawPosition = this.isGridLikeLayout()
 			? event.clientX > rect.left + rect.width / 2
 				? "after"
 				: "before"
 			: event.clientY > rect.top + rect.height / 2
 				? "after"
 				: "before";
-		const target =
-			typeof rawPosition === "string"
-				? this.normalizeDropTarget(id, rawPosition)
-				: rawPosition;
-		if (typeof rawPosition !== "string") {
-			indicatorClientY = rawPosition.indicatorClientY;
-		}
+		const target = this.normalizeDropTarget(id, rawPosition);
 		const targetRow = this.rows.get(target.id);
 		if (!targetRow) return;
-		const targetKey =
-			indicatorClientY === null
-				? `${target.id}:${target.position}`
-				: `${target.id}:${target.position}:${Math.round(indicatorClientY)}`;
+		const targetKey = `${target.id}:${target.position}`;
 		if (this.indicatorTargetKey === targetKey) {
 			this.dragOverId = target.id;
 			this.dropPosition = target.position;
@@ -541,71 +534,13 @@ export class TabController {
 		this.clearGroupDropTarget();
 		this.dragOverId = target.id;
 		this.dropPosition = target.position;
-		this.masonryIndicatorClientY = indicatorClientY;
 		this.showDropIndicator(targetRow.el, target.position, targetKey);
-	}
-
-	private getMasonryDropTarget(
-		id: string,
-		rect: DOMRect,
-		event: DragEvent
-	): MasonryDropTarget {
-		const boundary = this.getMasonryBoundaryAtPoint(
-			event.clientX,
-			event.clientY
-		);
-		if (boundary) return boundary;
-
-		const position =
-			event.clientY > rect.top + rect.height / 2 ? "after" : "before";
-		return {
-			id,
-			position,
-			indicatorClientY: position === "before" ? rect.top : rect.bottom,
-		};
-	}
-
-	private getMasonryBoundaryAtPoint(
-		x: number,
-		y: number
-	): MasonryDropTarget | null {
-		const rows = this.getMasonryColumnRowsAtPoint(x);
-		let previous: RowGeometry | null = null;
-		for (const row of rows) {
-			if (previous && y >= previous.rect.bottom && y <= row.rect.top) {
-				return {
-					id: row.id,
-					position: "before",
-					indicatorClientY:
-						previous.rect.bottom +
-						(row.rect.top - previous.rect.bottom) / 2,
-				};
-			}
-			previous = row;
-		}
-		return null;
-	}
-
-	private getMasonryColumnRowsAtPoint(x: number): RowGeometry[] {
-		const edgeTolerance = 8;
-		return this.getDragGeometry().rows
-			.filter((row) => {
-				if (row.id === this.draggedId) return false;
-				return (
-					x >= row.rect.left - edgeTolerance &&
-					x <= row.rect.right + edgeTolerance
-				);
-			})
-			.sort((left, right) => left.rect.top - right.rect.top);
 	}
 
 	private normalizeDropTarget(
 		id: string,
 		position: "before" | "after"
 	): { id: string; position: "before" | "after" } {
-		if (this.isMasonryLayout()) {
-			return { id, position };
-		}
 		if (position !== "after") {
 			return { id, position };
 		}
@@ -646,29 +581,35 @@ export class TabController {
 		const listRect = this.getDragGeometry().listRect;
 		const isGridLikeLayout = this.isGridLikeLayout();
 		const isMasonryLayout = this.isMasonryLayout();
-		const x = isMasonryLayout
-			? rect.left - listRect.left + this.listEl.scrollLeft
+		const masonryRect = this.masonryIndicatorRect;
+		const x =
+			isMasonryLayout && masonryRect
+				? masonryRect.left - listRect.left + this.listEl.scrollLeft
 			: isGridLikeLayout
 			? position === "before"
 				? rect.left - listRect.left + this.listEl.scrollLeft
 				: rect.right - listRect.left + this.listEl.scrollLeft
 			: 6 + this.listEl.scrollLeft;
-		const y = isMasonryLayout
-			? (this.masonryIndicatorClientY ??
-					(position === "before" ? rect.top : rect.bottom)) -
-				listRect.top +
-				this.listEl.scrollTop
+		const y =
+			isMasonryLayout && masonryRect
+				? masonryRect.top - listRect.top + this.listEl.scrollTop
 			: isGridLikeLayout
 			? rect.top - listRect.top + this.listEl.scrollTop
 			: (position === "before" ? rect.top : rect.bottom) -
 				listRect.top +
 				this.listEl.scrollTop;
-		const width = isMasonryLayout
-			? rect.width
+		const width =
+			isMasonryLayout && masonryRect
+				? masonryRect.width
 			: isGridLikeLayout
 			? 2
 			: Math.max(0, listRect.width - 12);
-		const height = isMasonryLayout ? 2 : isGridLikeLayout ? rect.height : 2;
+		const height =
+			isMasonryLayout && masonryRect
+				? masonryRect.height
+				: isGridLikeLayout
+				? rect.height
+				: 2;
 		const key = `${Math.round(x)}:${Math.round(y)}:${Math.round(width)}:${Math.round(height)}`;
 		if (this.indicatorKey === key) return;
 		this.indicatorKey = key;
@@ -687,6 +628,20 @@ export class TabController {
 
 	private handleListDragOver(event: DragEvent): void {
 		if (this.isFilterActive()) return;
+		if (this.isMasonryLayout()) {
+			if (this.isInsideDraggedRow(event.clientX, event.clientY)) {
+				this.hideDropIndicator();
+				return;
+			}
+			const slot = this.getMasonryDropSlotAtPoint(
+				event.clientX,
+				event.clientY
+			);
+			if (!slot) return;
+			event.preventDefault();
+			this.setMasonryDropTarget(slot);
+			return;
+		}
 		const rowEl = this.getEventRow(event);
 		const rowId = rowEl?.dataset.leafId;
 		if (rowEl && rowId && this.draggedId && this.draggedId !== rowId) {
@@ -707,6 +662,20 @@ export class TabController {
 
 	private handleListDrop(event: DragEvent): void {
 		if (this.isFilterActive()) return;
+		if (this.isMasonryLayout()) {
+			if (this.isInsideDraggedRow(event.clientX, event.clientY)) {
+				this.clearAllDragState();
+				return;
+			}
+			const slot = this.getMasonryDropSlotAtPoint(
+				event.clientX,
+				event.clientY
+			);
+			if (!slot) return;
+			event.preventDefault();
+			this.dropOnMasonrySlot(slot, event);
+			return;
+		}
 		const rowEl = this.getEventRow(event);
 		const rowId = rowEl?.dataset.leafId;
 		if (rowEl && rowId && this.draggedId && this.draggedId !== rowId) {
@@ -723,6 +692,47 @@ export class TabController {
 		if (!this.canDropAtListEnd(event)) return;
 		event.preventDefault();
 		this.dropAfterGroupEnd(this.lastGroupEndId as string, event);
+	}
+
+	private setMasonryDropTarget(slot: MasonryDropSlot): void {
+		if (this.indicatorTargetKey === slot.key) {
+			this.dragOverId = slot.id;
+			this.dropPosition = slot.position;
+			return;
+		}
+		const targetRow = this.rows.get(slot.id);
+		if (!targetRow) return;
+		this.clearGroupDropTarget();
+		this.dragOverId = slot.id;
+		this.dropPosition = slot.position;
+		this.masonryIndicatorRect = {
+			left: slot.left,
+			right: slot.left + slot.width,
+			top: slot.top,
+			bottom: slot.top + slot.height,
+			width: slot.width,
+			height: slot.height,
+		};
+		this.showDropIndicator(targetRow.el, slot.position, slot.key);
+	}
+
+	private dropOnMasonrySlot(slot: MasonryDropSlot, event: DragEvent): void {
+		this.setMasonryDropTarget(slot);
+		const sourceId =
+			event.dataTransfer?.getData("text/plain") || this.draggedId;
+		const targetId = this.dragOverId ?? slot.id;
+		const position = this.dropPosition;
+		const shouldMove =
+			!!sourceId && !this.isNoopMove(sourceId, targetId, position);
+		this.clearAllDragState();
+		if (
+			shouldMove &&
+			sourceId &&
+			moveLeafRelative(this.plugin.app, sourceId, targetId, position)
+		) {
+			this.pendingMovedId = sourceId;
+			this.scheduleRefresh();
+		}
 	}
 
 	private dropAfterGroupEnd(targetId: string, event: DragEvent): void {
@@ -760,9 +770,6 @@ export class TabController {
 			const row = target.closest(".lite-tabs-item");
 			if (row instanceof HTMLElement) return row;
 		}
-		if (this.isMasonryLayout()) {
-			return this.getNearestMasonryRow(event.clientX, event.clientY);
-		}
 		return this.getRowAtPoint(event.clientX, event.clientY);
 	}
 
@@ -780,7 +787,10 @@ export class TabController {
 		return null;
 	}
 
-	private getNearestMasonryRow(x: number, y: number): HTMLElement | null {
+	private getMasonryDropSlotAtPoint(
+		x: number,
+		y: number
+	): MasonryDropSlot | null {
 		const geometry = this.getDragGeometry();
 		if (
 			x < geometry.listRect.left ||
@@ -791,29 +801,155 @@ export class TabController {
 			return null;
 		}
 
-		let bestRow: RowGeometry | null = null;
+		const slots = this.getMasonryDropSlotsForPoint(x);
+		if (slots.length === 0) {
+			this.hideDropIndicator();
+			return null;
+		}
+		let bestSlot: MasonryDropSlot | null = null;
 		let bestDistance = Number.POSITIVE_INFINITY;
-		for (const row of geometry.rows) {
-			if (row.id === this.draggedId) continue;
-			const horizontalDistance =
-				x < row.rect.left
-					? row.rect.left - x
-					: x > row.rect.right
-					? x - row.rect.right
-					: 0;
-			const verticalDistance =
-				y < row.rect.top
-					? row.rect.top - y
-					: y > row.rect.bottom
-					? y - row.rect.bottom
-					: 0;
-			const distance = verticalDistance * 2 + horizontalDistance;
-			if (distance < bestDistance) {
-				bestDistance = distance;
-				bestRow = row;
+		for (const slot of slots) {
+			const verticalDistance = Math.abs(y - slot.top);
+			if (verticalDistance < bestDistance) {
+				bestDistance = verticalDistance;
+				bestSlot = slot;
 			}
 		}
-		return bestRow?.el ?? null;
+		return bestSlot;
+	}
+
+	private isInsideDraggedRow(x: number, y: number): boolean {
+		if (!this.draggedId) return false;
+		const row = this.getDragGeometry().rows.find(
+			(candidate) => candidate.id === this.draggedId
+		);
+		if (!row) return false;
+		return (
+			x >= row.rect.left &&
+			x <= row.rect.right &&
+			y >= row.rect.top &&
+			y <= row.rect.bottom
+		);
+	}
+
+	private getMasonryDropSlotsForPoint(x: number): MasonryDropSlot[] {
+		const column = this.getMasonryColumnAtPoint(x);
+		if (!column) return [];
+		const slots = this.getMasonryDropSlotsForColumn(column);
+		return slots.filter((slot) => !this.isNoopMasonryDropSlot(slot));
+	}
+
+	private getMasonryDropSlots(): MasonryDropSlot[] {
+		const columns = this.getMasonryColumns();
+		const slots: MasonryDropSlot[] = [];
+		for (const column of columns) {
+			slots.push(...this.getMasonryDropSlotsForColumn(column));
+		}
+		return slots;
+	}
+
+	private getMasonryDropSlotsForColumn(column: RowGeometry[]): MasonryDropSlot[] {
+		if (column.length === 0) return [];
+		const slots: MasonryDropSlot[] = [];
+		const first = column[0];
+		slots.push(this.createMasonryDropSlot(first, "before", first.rect.top));
+		for (let index = 1; index < column.length; index += 1) {
+			const previous = column[index - 1];
+			const current = column[index];
+			const top =
+				previous.rect.bottom +
+				(current.rect.top - previous.rect.bottom) / 2;
+			slots.push(this.createMasonryDropSlot(current, "before", top));
+		}
+		const last = column[column.length - 1];
+		slots.push(this.createMasonryDropSlot(last, "after", last.rect.bottom));
+		return slots;
+	}
+
+	private getMasonryColumnAtPoint(x: number): RowGeometry[] | null {
+		const columns = this.getMasonryColumns();
+		const direct = columns.find((column) => {
+			const first = column[0];
+			return x >= first.rect.left && x <= first.rect.right;
+		});
+		if (direct) return direct;
+
+		const listRect = this.getDragGeometry().listRect;
+		if (x < listRect.left || x > listRect.right) return null;
+		let nearest: RowGeometry[] | null = null;
+		let bestDistance = Number.POSITIVE_INFINITY;
+		for (const column of columns) {
+			const first = column[0];
+			const distance =
+				x < first.rect.left ? first.rect.left - x : x - first.rect.right;
+			if (distance >= 0 && distance < bestDistance) {
+				bestDistance = distance;
+				nearest = column;
+			}
+		}
+		return nearest;
+	}
+
+	private isNoopMasonryDropSlot(slot: MasonryDropSlot): boolean {
+		if (!this.draggedId) return false;
+		if (this.isMasonrySlotInsideDraggedRow(slot)) return true;
+		return this.isNoopMove(this.draggedId, slot.id, slot.position);
+	}
+
+	private isMasonrySlotInsideDraggedRow(slot: MasonryDropSlot): boolean {
+		if (!this.draggedId) return false;
+		const draggedRow = this.getDragGeometry().rows.find(
+			(row) => row.id === this.draggedId
+		);
+		if (!draggedRow) return false;
+		const tolerance = 2;
+		const overlapsX =
+			slot.left < draggedRow.rect.right - tolerance &&
+			slot.left + slot.width > draggedRow.rect.left + tolerance;
+		const insideY =
+			slot.top >= draggedRow.rect.top - tolerance &&
+			slot.top <= draggedRow.rect.bottom + tolerance;
+		return overlapsX && insideY;
+	}
+
+	private getMasonryColumns(): RowGeometry[][] {
+		const columns: RowGeometry[][] = [];
+		for (const row of this.getDragGeometry().rows) {
+			if (row.id === this.draggedId) continue;
+			const centerX = row.rect.left + row.rect.width / 2;
+			const existing = columns.find((column) => {
+				const first = column[0];
+				return centerX >= first.rect.left && centerX <= first.rect.right;
+			});
+			if (existing) {
+				existing.push(row);
+			} else {
+				columns.push([row]);
+			}
+		}
+		return columns
+			.sort((left, right) => left[0].rect.left - right[0].rect.left)
+			.map((column) =>
+				column.sort((left, right) => left.rect.top - right.rect.top)
+			);
+	}
+
+	private createMasonryDropSlot(
+		row: RowGeometry,
+		position: "before" | "after",
+		top: number
+	): MasonryDropSlot {
+		const roundedLeft = Math.round(row.rect.left);
+		const roundedTop = Math.round(top);
+		return {
+			id: row.id,
+			position,
+			left: row.rect.left,
+			top,
+			width: row.rect.width,
+			height: 2,
+			key: `masonry:${row.id}:${position}:${roundedLeft}:${roundedTop}`,
+		};
 	}
 
 	private canDropAtListEnd(event: DragEvent): boolean {
@@ -898,7 +1034,7 @@ export class TabController {
 		this.hideDropIndicator();
 		this.draggedId = null;
 		this.dragOverId = null;
-		this.masonryIndicatorClientY = null;
+		this.masonryIndicatorRect = null;
 		this.dropPosition = "before";
 		this.rootEl.toggleClass("is-dragging", false);
 	}
@@ -1005,14 +1141,44 @@ export class TabController {
 		const row = this.rows.get(this.pendingMovedId);
 		if (!row) return;
 		this.pendingMovedId = null;
+		this.clearDropResult();
 		row.el.removeClass("is-drop-result");
 		void row.el.offsetWidth;
 		row.el.addClass("is-drop-result");
+		this.dropResultEl = row.el;
 		row.el.addEventListener(
 			"animationend",
-			() => row.el.removeClass("is-drop-result"),
+			() => {
+				row.el.removeClass("is-drop-result");
+				if (this.dropResultEl === row.el) {
+					this.dropResultEl = null;
+				}
+			},
 			{ once: true }
 		);
+	}
+
+	private clearDropResult(): void {
+		this.dropResultEl?.removeClass("is-drop-result");
+		this.dropResultEl = null;
+	}
+
+	private isNoopMove(
+		sourceId: string,
+		targetId: string,
+		position: "before" | "after"
+	): boolean {
+		if (sourceId === targetId) return true;
+		const sourceIndex = this.orderedIndexById.get(sourceId);
+		const targetIndex = this.orderedIndexById.get(targetId);
+		if (sourceIndex === undefined || targetIndex === undefined) {
+			return false;
+		}
+		let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
+		if (sourceIndex < insertIndex) {
+			insertIndex -= 1;
+		}
+		return sourceIndex === insertIndex;
 	}
 
 	private isMasonryLayout(): boolean {
