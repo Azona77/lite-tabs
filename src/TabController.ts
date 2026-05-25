@@ -1912,7 +1912,6 @@ export class TabController {
 		}
 		if (row.renderedPinned !== item.pinned) {
 			row.el.toggleClass("is-pinned", item.pinned);
-			row.closeEl.toggleClass("is-pin-action", item.pinned);
 			renderIcon(row.closeEl, item.pinned ? "pin" : "x");
 			row.closeEl.setAttr(
 				"aria-label",

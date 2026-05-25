@@ -273,14 +273,22 @@ body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
 
 .lite-tabs-item.is-pinned {
     background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+    overflow: hidden;
 }
 
-.lite-tabs-item.is-pinned .lite-tabs-icon {
-    color: var(--interactive-accent);
-}
-
-.lite-tabs-item.is-pinned .lite-tabs-title {
-    padding-right: 26px;
+.lite-tabs-item.is-pinned::before {
+    background: var(--interactive-accent);
+    content: "";
+    height: 10px;
+    opacity: 0.8;
+    pointer-events: none;
+    position: absolute;
+    right: -7px;
+    top: -7px;
+    transform: rotate(45deg);
+    transform-origin: center;
+    width: 22px;
+    z-index: 1;
 }
 
 body.lite-tabs-active-background .lite-tabs-item.is-active {
@@ -527,22 +535,10 @@ body.is-mobile.lite-tabs-layout-masonry
     transform: translateY(-50%) scale(1);
 }
 
-.lite-tabs-close.is-pin-action {
-    color: var(--interactive-accent);
-    opacity: 0.72;
-    pointer-events: auto;
-    transform: translateY(-50%) scale(1);
-}
-
 body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close,
 body.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,
 body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close,
 body.lite-tabs-layout-masonry .lite-tabs-item.is-active .lite-tabs-close {
-    transform: scale(1);
-}
-
-body.lite-tabs-layout-card .lite-tabs-close.is-pin-action,
-body.lite-tabs-layout-masonry .lite-tabs-close.is-pin-action {
     transform: scale(1);
 }
 
