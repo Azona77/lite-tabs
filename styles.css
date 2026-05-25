@@ -366,6 +366,12 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
     white-space: nowrap;
 }
 
+.lite-tabs-title-match {
+    background: color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+    border-radius: 3px;
+    color: var(--text-accent);
+}
+
 .lite-tabs-close {
     align-items: center;
     background: var(--background-primary);

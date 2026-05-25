@@ -19,6 +19,7 @@ interface RowRecord {
 	titleEl: HTMLElement;
 	closeEl: HTMLElement;
 	renderedTitle: string;
+	renderedTitleQuery: string | null;
 	renderedIcon: string;
 	renderedParentId: string;
 	renderedPinned: boolean;
@@ -437,6 +438,7 @@ export class TabController {
 			titleEl,
 			closeEl,
 			renderedTitle: "",
+			renderedTitleQuery: null,
 			renderedIcon: "",
 			renderedParentId: "",
 			renderedPinned: false,
@@ -665,6 +667,12 @@ export class TabController {
 			this.scheduleMasonryLayout();
 		});
 		input.addEventListener("keydown", (event) => {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				event.stopPropagation();
+				this.activateFirstVisibleTab();
+				return;
+			}
 			if (event.key !== "Escape" || !input.value) return;
 			event.stopPropagation();
 			input.value = "";
@@ -1895,9 +1903,8 @@ export class TabController {
 	private updateRow(row: RowRecord, item: TabItem): void {
 		row.item = item;
 		if (row.renderedTitle !== item.title) {
-			row.titleEl.setText(item.title);
 			row.el.title = item.title;
-			row.renderedTitle = item.title;
+			this.renderRowTitle(row);
 		}
 		if (row.renderedParentId !== item.parentId) {
 			row.el.dataset.parentId = item.parentId;
@@ -1940,6 +1947,7 @@ export class TabController {
 			row.el.draggable = allowNativeDrag;
 			row.iconEl.draggable = allowNativeDrag;
 			row.titleEl.draggable = allowNativeDrag;
+			this.renderRowTitle(row);
 			if (visible) visibleCount += 1;
 		}
 		for (const { el } of this.groupSeparators) {
@@ -1956,6 +1964,60 @@ export class TabController {
 		this.emptyEl.toggle(visibleCount === 0);
 		this.invalidateDragGeometry();
 		this.scheduleListOverflowCheck();
+	}
+
+	private renderRowTitle(row: RowRecord): void {
+		const query = this.isFilterActive() ? this.filterQuery : null;
+		if (
+			row.renderedTitle === row.item.title &&
+			row.renderedTitleQuery === query
+		) {
+			return;
+		}
+
+		row.titleEl.empty();
+		if (!query) {
+			row.titleEl.setText(row.item.title);
+		} else {
+			this.renderHighlightedTitle(row.titleEl, row.item.title, query);
+		}
+		row.renderedTitle = row.item.title;
+		row.renderedTitleQuery = query;
+	}
+
+	private renderHighlightedTitle(
+		el: HTMLElement,
+		title: string,
+		query: string
+	): void {
+		const lowerTitle = title.toLocaleLowerCase();
+		let cursor = 0;
+		let matchIndex = lowerTitle.indexOf(query);
+		while (matchIndex >= 0) {
+			if (matchIndex > cursor) {
+				el.createSpan({
+					text: title.slice(cursor, matchIndex),
+				});
+			}
+			el.createSpan({
+				cls: "lite-tabs-title-match",
+				text: title.slice(matchIndex, matchIndex + query.length),
+			});
+			cursor = matchIndex + query.length;
+			matchIndex = lowerTitle.indexOf(query, cursor);
+		}
+		if (cursor < title.length) {
+			el.createSpan({ text: title.slice(cursor) });
+		}
+	}
+
+	private activateFirstVisibleTab(): void {
+		for (const id of this.orderedIds) {
+			const row = this.rows.get(id);
+			if (!row || !row.el.isShown()) continue;
+			this.activateLeaf(row.item.leaf);
+			return;
+		}
 	}
 
 	private syncGroupLayoutState(): void {
