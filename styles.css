@@ -182,7 +182,6 @@ button.lite-tabs-toolbar-button {
 .lite-tabs-toolbar:focus-within .lite-tabs-layout-button,
 .lite-tabs-toolbar:focus-within .lite-tabs-toolbar-button {
     opacity: 1;
-    transform: scale(1);
     transition:
         opacity 0.1s ease,
         transform 0.1s ease;
@@ -279,15 +278,15 @@ body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
 .lite-tabs-item.is-pinned::before {
     background: var(--interactive-accent);
     content: "";
-    height: 10px;
+    height: 50px;
     opacity: 0.8;
     pointer-events: none;
     position: absolute;
-    right: -7px;
-    top: -7px;
-    transform: rotate(45deg);
+    right: 0px;
+    top: 0px;
+    transform: rotate(45deg) translate(0px, -48px);
     transform-origin: center;
-    width: 22px;
+    width: 50px;
     z-index: 1;
 }
 
@@ -398,12 +397,13 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
     position: absolute;
     right: 4px;
     top: 50%;
-    transform: translateY(-50%) scale(0.92);
+    transform: translateY(-50%);
+    transform-origin: center;
     transition:
-        background-color 0.1s ease,
-        color 0.1s ease,
-        opacity 0.1s ease,
-        transform 0.1s ease;
+        background-color 120ms ease,
+        color 120ms ease,
+        opacity 140ms ease,
+        transform 140ms cubic-bezier(0.2, 0, 0.2, 1);
     width: 22px;
     z-index: 2;
 }
@@ -411,13 +411,11 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
 body.lite-tabs-layout-card .lite-tabs-close {
     right: 5px;
     top: 5px;
-    transform: scale(0.92);
 }
 
 body.lite-tabs-layout-masonry .lite-tabs-close {
     right: 5px;
     top: 5px;
-    transform: scale(0.92);
 }
 
 body.is-mobile .lite-tabs-item {
@@ -505,14 +503,13 @@ body.is-mobile.lite-tabs-layout-masonry .lite-tabs-title {
 body.is-mobile .lite-tabs-item.is-active .lite-tabs-close {
     opacity: 0.62;
     pointer-events: auto;
-    transform: translateY(-50%) scale(1);
+    transform: translateY(-50%);
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-close,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-close {
     opacity: 0.5;
     pointer-events: auto;
-    transform: scale(1);
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,
@@ -527,27 +524,28 @@ body.is-mobile .lite-tabs-root.is-dragging .lite-tabs-drag-handle {
     opacity: 0.75;
 }
 
-body.is-mobile.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,
-body.is-mobile.lite-tabs-layout-masonry
-    .lite-tabs-item.is-active
-    .lite-tabs-close {
-    transform: scale(1);
-}
 
 .lite-tabs-item:hover .lite-tabs-close {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(-50%) scale(1);
+    transform: translate3d(0, -50%, 0);
 }
 
-body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close,
-body.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,
-body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close,
-body.lite-tabs-layout-masonry .lite-tabs-item.is-active .lite-tabs-close {
-    transform: scale(1);
+body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close, body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close {
+    transform: translate3d(0, 0, 0);
+}
+
+.lite-tabs-item.is-pinned:hover .lite-tabs-close,
+.lite-tabs-item.is-pinned.is-active .lite-tabs-close {
+    color: var(--interactive-accent);
 }
 
 .lite-tabs-close:hover {
     background: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+
+.lite-tabs-item.is-pinned .lite-tabs-close:hover {
+    background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+    color: var(--interactive-accent);
 }
