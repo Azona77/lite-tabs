@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag to rebuild and attest"
         required: true
-        default: "1.3.0"
+        default: "1.3.1"
 
 permissions:
   contents: write
@@ -69,41 +69,21 @@ jobs:
           cat > release-notes.md <<'EOF'
           ## 中文
 
-          本次更新完善了 Masonry 视图的分组体验，并增加固定标签页与搜索增强功能。
+          本次补丁修复移动端按钮布局细节，建议所有 1.3.0 用户升级。
 
-          ### 新增
+          ### 修复
 
-          - Masonry 视图支持与 Card 视图一致的分组分隔显示。
-          - 新增右键固定/取消固定标签页。
-          - 搜索框支持按 Enter 激活第一个匹配标签页。
-          - 搜索匹配文本高亮显示。
-
-          ### 改进
-
-          - 优化 Masonry 分组拖放区域，减少跨组排序误判。
-          - 稳定 Masonry 刷新布局，降低拖放后的卡片跳动。
-          - 固定标签页新增折角标记，并在 hover 时显示取消固定按钮。
-          - 优化标签页关闭/固定按钮的浮现动画。
-          - 改进图标与标题在不同字号下的纵向对齐。
+          - 修复移动端按钮布局问题。
+          - 保留 1.3.0 中的 Masonry 分组、固定标签页和搜索增强功能。
 
           ## English
 
-          This update improves grouped Masonry behavior and adds pinned tabs plus richer search interactions.
+          This patch fixes mobile button layout details and is recommended for all 1.3.0 users.
 
-          ### New
+          ### Fixed
 
-          - Added group separators to Masonry view, matching Card view behavior.
-          - Added context-menu actions to pin and unpin tabs.
-          - Search now activates the first matching tab with Enter.
-          - Search matches are highlighted in tab titles.
-
-          ### Improved
-
-          - Improved Masonry drag-and-drop hit areas around groups.
-          - Stabilized Masonry layout refreshes to reduce card jumping after drops.
-          - Added a corner ribbon marker for pinned tabs, with hover-to-unpin behavior.
-          - Refined close/pin button reveal animations.
-          - Improved vertical alignment between tab icons and titles across font sizes.
+          - Fixed mobile button layout behavior.
+          - Keeps the Masonry grouping, pinned tabs, and search improvements introduced in 1.3.0.
           EOF
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
