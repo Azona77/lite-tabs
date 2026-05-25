@@ -114,6 +114,7 @@ export class TabController {
 	private autoScrollVelocity = 0;
 	private overflowFrame: number | null = null;
 	private renderedLayoutStyle: LiteTabsLayoutStyle | null = null;
+	private bottomSpacerHeight = 0;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -219,7 +220,9 @@ export class TabController {
 			this.renderedLayoutStyle !== null &&
 			this.renderedLayoutStyle !== this.plugin.settings.layoutStyle;
 		const previousScrollTop = layoutChanged ? 0 : this.listEl.scrollTop;
-		this.resetBottomSpacer();
+		if (layoutChanged) {
+			this.resetBottomSpacer();
+		}
 		const nextIds = items.map((item) => item.id);
 		const nextIdSet = new Set(nextIds);
 		const itemsById = new Map(items.map((item) => [item.id, item]));
@@ -283,7 +286,7 @@ export class TabController {
 		this.syncIconButton();
 		this.syncInactiveTabsButton();
 		this.applyFilter();
-		this.scheduleMasonryLayout();
+		this.flushMasonryLayout();
 		this.restoreScrollTop(previousScrollTop);
 		this.scheduleListOverflowCheck();
 		this.renderedLayoutStyle = this.plugin.settings.layoutStyle;
@@ -1635,6 +1638,14 @@ export class TabController {
 		});
 	}
 
+	private flushMasonryLayout(): void {
+		if (this.masonryFrame !== null) {
+			cancelAnimationFrame(this.masonryFrame);
+			this.masonryFrame = null;
+		}
+		this.applyMasonryLayout();
+	}
+
 	private scheduleListOverflowCheck(): void {
 		if (this.overflowFrame !== null) return;
 		this.overflowFrame = requestAnimationFrame(() => {
@@ -1645,7 +1656,6 @@ export class TabController {
 
 	private syncListOverflowState(): void {
 		const tolerance = 1;
-		this.resetBottomSpacer();
 		const contentHeight = this.getVisibleContentHeight();
 		const availableHeight = this.getListContentHeight();
 		const isOverflowing = contentHeight > availableHeight + tolerance;
@@ -1713,6 +1723,8 @@ export class TabController {
 
 	private setBottomSpacer(height: number): void {
 		const roundedHeight = Math.max(0, Math.floor(height));
+		if (roundedHeight === this.bottomSpacerHeight) return;
+		this.bottomSpacerHeight = roundedHeight;
 		this.bottomSpacerEl.style.display =
 			roundedHeight > 0 ? "block" : "none";
 		this.bottomSpacerEl.style.height = `${roundedHeight}px`;
@@ -1733,33 +1745,58 @@ export class TabController {
 		const columnGap = parseFloat(styles.columnGap);
 		if (!Number.isFinite(rowHeight) || rowHeight <= 0) return;
 		const gap = Number.isFinite(columnGap) ? columnGap : 0;
+		const entries: { el: HTMLElement; span: number | null }[] = [];
 
 		for (const row of this.rows.values()) {
-			this.applyMasonrySpan(row.el, rowHeight, gap);
+			entries.push({
+				el: row.el,
+				span: this.measureMasonrySpan(row.el, rowHeight, gap),
+			});
 		}
 		for (const { el } of this.groupSeparators) {
-			this.applyMasonrySpan(el, rowHeight, gap);
+			entries.push({
+				el,
+				span: this.measureMasonrySpan(el, rowHeight, gap),
+			});
 		}
-		this.applyMasonrySpan(this.emptyEl, rowHeight, gap);
+		entries.push({
+			el: this.emptyEl,
+			span: this.measureMasonrySpan(this.emptyEl, rowHeight, gap),
+		});
+		this.applyMasonrySpans(entries);
 		this.invalidateDragGeometry();
 		this.applyPendingMoveFeedback();
 		this.scheduleListOverflowCheck();
 	}
 
-	private applyMasonrySpan(
+	private measureMasonrySpan(
 		el: HTMLElement,
 		rowHeight: number,
 		gap: number
-	): void {
-		el.style.removeProperty("--lite-tabs-masonry-span");
-		if (!el.isShown()) return;
+	): number | null {
+		if (!el.isShown()) return null;
 		const margins = this.getElementMargins(el);
 		const height =
 			Math.max(el.scrollHeight, el.offsetHeight) +
 			margins.top +
 			margins.bottom;
-		const span = Math.max(1, Math.ceil((height + gap) / rowHeight));
-		el.style.setProperty("--lite-tabs-masonry-span", String(span));
+		return Math.max(1, Math.ceil((height + gap) / rowHeight));
+	}
+
+	private applyMasonrySpans(
+		entries: { el: HTMLElement; span: number | null }[]
+	): void {
+		for (const { el, span } of entries) {
+			if (span === null) {
+				el.style.removeProperty("--lite-tabs-masonry-span");
+				continue;
+			}
+			const nextValue = String(span);
+			if (el.style.getPropertyValue("--lite-tabs-masonry-span") === nextValue) {
+				continue;
+			}
+			el.style.setProperty("--lite-tabs-masonry-span", nextValue);
+		}
 	}
 
 	private clearMasonrySpans(): void {
