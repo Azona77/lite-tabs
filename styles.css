@@ -366,7 +366,7 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
     align-items: center;
     color: var(--text-faint);
     display: none;
-    height: 22px;
+    height: calc(100% - 6px);
     justify-content: center;
     opacity: 0.45;
     width: 22px;
@@ -503,13 +503,14 @@ body.is-mobile.lite-tabs-layout-masonry .lite-tabs-title {
 body.is-mobile .lite-tabs-item.is-active .lite-tabs-close {
     opacity: 0.62;
     pointer-events: auto;
-    transform: translateY(-50%);
+    transform: translate(0, 0);
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-close,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-close {
     opacity: 0.5;
     pointer-events: auto;
+    transform: translate(0, 0);
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,
