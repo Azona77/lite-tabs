@@ -31,6 +31,10 @@ body.lite-tabs-layout-masonry .lite-tabs-list {
     padding: 8px;
 }
 
+body.lite-tabs-layout-masonry .lite-tabs-list.has-groups {
+    grid-auto-flow: row;
+}
+
 body.lite-tabs-layout-card .lite-tabs-item {
     align-items: start;
     border: 1px solid var(--background-modifier-border);
@@ -77,12 +81,13 @@ body.lite-tabs-layout-card .lite-tabs-empty {
     grid-column: 1 / -1;
 }
 
-body.lite-tabs-layout-masonry .lite-tabs-group-separator {
-    display: none;
-}
-
 body.lite-tabs-layout-masonry .lite-tabs-empty {
     grid-column: 1 / -1;
+}
+
+body.lite-tabs-layout-masonry .lite-tabs-group-separator,
+body.lite-tabs-layout-masonry .lite-tabs-empty {
+    grid-row-end: span var(--lite-tabs-masonry-span, 1);
 }
 
 body.lite-tabs-hide-icons .lite-tabs-item {
