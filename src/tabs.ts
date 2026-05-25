@@ -23,6 +23,7 @@ export interface TabItem {
 	icon: string;
 	parentId: string;
 	active: boolean;
+	pinned: boolean;
 }
 
 export function collectTabs(app: App): TabItem[] {
@@ -40,6 +41,7 @@ export function collectTabs(app: App): TabItem[] {
 			icon: leaf.getIcon(),
 			parentId: getLeafParentId(leaf),
 			active: activeId === id,
+			pinned: !!leaf.getViewState().pinned,
 		});
 	});
 

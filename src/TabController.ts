@@ -21,6 +21,7 @@ interface RowRecord {
 	renderedTitle: string;
 	renderedIcon: string;
 	renderedParentId: string;
+	renderedPinned: boolean;
 	active: boolean;
 }
 
@@ -315,7 +316,7 @@ export class TabController {
 		return `${this.getLayoutSignature()}|${items
 			.map(
 				(item) =>
-					`${item.id}\u001f${item.parentId}\u001f${item.title}\u001f${item.icon}`
+					`${item.id}\u001f${item.parentId}\u001f${item.title}\u001f${item.icon}\u001f${item.pinned}`
 			)
 			.join("\u001e")}`;
 	}
@@ -436,6 +437,7 @@ export class TabController {
 			renderedTitle: "",
 			renderedIcon: "",
 			renderedParentId: "",
+			renderedPinned: false,
 			active: false,
 		};
 		this.updateRow(row, item);
@@ -1899,6 +1901,10 @@ export class TabController {
 			row.el.dataset.parentId = item.parentId;
 			row.renderedParentId = item.parentId;
 		}
+		if (row.renderedPinned !== item.pinned) {
+			row.el.toggleClass("is-pinned", item.pinned);
+			row.renderedPinned = item.pinned;
+		}
 		if (row.active !== item.active) {
 			row.el.toggleClass("is-active", item.active);
 			row.active = item.active;
@@ -1957,6 +1963,16 @@ export class TabController {
 
 	private showContextMenu(leaf: WorkspaceLeaf, event: MouseEvent): void {
 		const menu = new Menu();
+		const pinned = !!leaf.getViewState().pinned;
+		menu.addItem((item) => {
+			item
+				.setTitle(pinned ? "Unpin tab" : "Pin tab")
+				.setIcon(pinned ? "pin-off" : "pin")
+				.onClick(() => {
+					leaf.setPinned(!pinned);
+					this.scheduleRefresh();
+				});
+		});
 		menu.addItem((item) => {
 			item.setTitle("Close").setIcon("x").onClick(() => {
 				this.closeLeaf(leaf);
