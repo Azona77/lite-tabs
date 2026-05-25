@@ -730,6 +730,10 @@ export class TabController {
 				this.clearDropTarget();
 				return;
 			}
+			if (this.isMasonrySeparatorAtCoordinates(x, y, null)) {
+				this.clearDropTarget();
+				return;
+			}
 			const groupEndId = this.getMasonryGroupEndTargetAtCoordinates(
 				x,
 				y,
@@ -882,6 +886,16 @@ export class TabController {
 				this.hideDropIndicator();
 				return;
 			}
+			if (
+				this.isMasonrySeparatorAtCoordinates(
+					event.clientX,
+					event.clientY,
+					event.target
+				)
+			) {
+				this.clearDropTarget();
+				return;
+			}
 			const groupEndId = this.getMasonryGroupEndTargetAtCoordinates(
 				event.clientX,
 				event.clientY,
@@ -931,6 +945,16 @@ export class TabController {
 		if (this.isFilterActive()) return;
 		if (this.isMasonryLayout()) {
 			if (this.isInsideDraggedRow(event.clientX, event.clientY)) {
+				this.clearAllDragState();
+				return;
+			}
+			if (
+				this.isMasonrySeparatorAtCoordinates(
+					event.clientX,
+					event.clientY,
+					event.target
+				)
+			) {
 				this.clearAllDragState();
 				return;
 			}
@@ -1414,19 +1438,14 @@ export class TabController {
 			separatorRect,
 			separatorOuterRect,
 		} of geometry.separators) {
-			const groupRows = this.getRowsInGroup(endId, geometry.rows);
-			const groupBottom = groupRows.reduce(
-				(bottom, row) => Math.max(bottom, row.rect.bottom),
-				rowRect.bottom
-			);
 			const inTrailingBlank =
 				x > rowRect.right &&
 				y >= rowRect.top &&
-				y <= separatorRect.bottom;
+				y < separatorRect.top;
 			const inBottomBlank =
-				y >= groupBottom && y <= separatorRect.bottom;
+				y >= rowRect.bottom && y < separatorRect.top;
 			const inSeparatorTopMargin =
-				y >= separatorOuterRect.top && y <= separatorRect.bottom;
+				y >= separatorOuterRect.top && y < separatorRect.top;
 			if (inTrailingBlank || inBottomBlank || inSeparatorTopMargin) {
 				return endId;
 			}
@@ -1434,38 +1453,39 @@ export class TabController {
 		return null;
 	}
 
-	private getRowsInGroup(
-		id: string,
-		rows: RowGeometry[]
-	): RowGeometry[] {
-		const endRow = this.rows.get(id);
-		if (!endRow) return [];
-		return rows.filter((row) => {
-			const record = this.rows.get(row.id);
-			return record?.item.parentId === endRow.item.parentId;
-		});
+	private isMasonrySeparatorAtCoordinates(
+		x: number,
+		y: number,
+		target: EventTarget | null
+	): boolean {
+		if (
+			target instanceof HTMLElement &&
+			target.closest(".lite-tabs-group-separator")
+		) {
+			return true;
+		}
+		return this.getDragGeometry().separators.some(
+			({ separatorRect }) =>
+				x >= separatorRect.left &&
+				x <= separatorRect.right &&
+				y >= separatorRect.top &&
+				y <= separatorRect.bottom
+		);
 	}
 
 	private getMasonryGroupDropIndicatorRect(
 		endId: string
 	): RectSnapshot | null {
 		const geometry = this.getDragGeometry();
-		const listRect = geometry.listRect;
-		const inset = 6;
-		const left = listRect.left + inset;
-		const width = Math.max(0, listRect.width - inset * 2);
-		const separator = geometry.separators.find(
-			(candidate) => candidate.endId === endId
-		);
 		const row = geometry.rows.find((candidate) => candidate.id === endId);
-		const top = separator?.separatorRect.top ?? row?.rect.bottom;
-		if (top === undefined) return null;
+		if (!row) return null;
+		const top = row.rect.bottom;
 		return {
-			left,
-			right: left + width,
+			left: row.rect.left,
+			right: row.rect.right,
 			top,
 			bottom: top + 2,
-			width,
+			width: row.rect.width,
 			height: 2,
 		};
 	}
