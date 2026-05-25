@@ -345,6 +345,8 @@ export class TabController {
 		handleEl.setAttr("title", "Drag tab");
 		setIcon(handleEl, "grip-vertical");
 		renderIcon(closeEl, "x");
+		closeEl.setAttr("aria-label", "Close tab");
+		closeEl.setAttr("title", "Close tab");
 
 		el.addEventListener("mousedown", (event) => {
 			if (event.button !== 1) return;
@@ -359,7 +361,7 @@ export class TabController {
 		});
 		el.addEventListener("click", (event) => {
 			if ((event.target as HTMLElement).closest(".lite-tabs-close")) {
-				this.closeLeaf(item.leaf);
+				this.handleRowAction(item.id);
 				return;
 			}
 			this.activateLeaf(item.leaf);
@@ -371,7 +373,7 @@ export class TabController {
 		});
 		closeEl.addEventListener("click", (event) => {
 			event.stopPropagation();
-			this.closeLeaf(item.leaf);
+			this.handleRowAction(item.id);
 		});
 		handleEl.addEventListener("click", (event) => {
 			event.preventDefault();
@@ -1903,6 +1905,16 @@ export class TabController {
 		}
 		if (row.renderedPinned !== item.pinned) {
 			row.el.toggleClass("is-pinned", item.pinned);
+			row.closeEl.toggleClass("is-pin-action", item.pinned);
+			renderIcon(row.closeEl, item.pinned ? "pin" : "x");
+			row.closeEl.setAttr(
+				"aria-label",
+				item.pinned ? "Unpin tab" : "Close tab"
+			);
+			row.closeEl.setAttr(
+				"title",
+				item.pinned ? "Unpin tab" : "Close tab"
+			);
 			row.renderedPinned = item.pinned;
 		}
 		if (row.active !== item.active) {
@@ -1996,5 +2008,16 @@ export class TabController {
 		leaf.detach();
 		if (wasActive) this.activeId = null;
 		this.scheduleRefresh();
+	}
+
+	private handleRowAction(id: string): void {
+		const row = this.rows.get(id);
+		if (!row) return;
+		if (row.item.pinned) {
+			row.item.leaf.setPinned(false);
+			this.scheduleRefresh();
+			return;
+		}
+		this.closeLeaf(row.item.leaf);
 	}
 }

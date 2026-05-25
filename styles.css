@@ -271,6 +271,18 @@ body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
     color: var(--text-accent);
 }
 
+.lite-tabs-item.is-pinned {
+    background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+}
+
+.lite-tabs-item.is-pinned .lite-tabs-icon {
+    color: var(--interactive-accent);
+}
+
+.lite-tabs-item.is-pinned .lite-tabs-title {
+    padding-right: 26px;
+}
+
 body.lite-tabs-active-background .lite-tabs-item.is-active {
     background: color-mix(
         in srgb,
@@ -509,10 +521,22 @@ body.is-mobile.lite-tabs-layout-masonry
     transform: translateY(-50%) scale(1);
 }
 
+.lite-tabs-close.is-pin-action {
+    color: var(--interactive-accent);
+    opacity: 0.72;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+}
+
 body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close,
 body.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,
 body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close,
 body.lite-tabs-layout-masonry .lite-tabs-item.is-active .lite-tabs-close {
+    transform: scale(1);
+}
+
+body.lite-tabs-layout-card .lite-tabs-close.is-pin-action,
+body.lite-tabs-layout-masonry .lite-tabs-close.is-pin-action {
     transform: scale(1);
 }
 
