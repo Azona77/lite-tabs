@@ -353,9 +353,14 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
     align-items: center;
     color: var(--text-muted);
     display: flex;
-    height: 18px;
+    height: 1.35em;
     justify-content: center;
+    line-height: 1;
     width: 18px;
+}
+
+.lite-tabs-icon svg {
+    flex: 0 0 auto;
 }
 
 .lite-tabs-drag-handle {
