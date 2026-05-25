@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag to rebuild and attest"
         required: true
-        default: "1.2.0"
+        default: "1.3.0"
 
 permissions:
   contents: write
@@ -67,51 +67,43 @@ jobs:
         shell: bash
         run: |
           cat > release-notes.md <<'EOF'
-          ## English
-
-          ### New
-
-          - Added mobile drag handles with an option to hide them.
-          - Mobile bottom stacking is enabled by default for new users.
-
-          ### Improved
-
-          - Card and Masonry mobile drag handles now use a left-side vertical grip to avoid blocking vertical scrolling.
-          - Card and Masonry views keep close buttons visible on mobile.
-          - Bottom alignment now works with normal scrolling by measuring visible content and adding spacer only when content does not overflow.
-
-          ### Fixed
-
-          - Fixed Card and Masonry title width after adding drag handles.
-          - Fixed inconsistent mobile scrolling after switching layouts.
-          - Reduced conflicts between drag handles and the sidebar swipe gesture.
-
-          ### Notes
-
-          - Desktop behavior is unchanged.
-
           ## 中文
+
+          本次更新完善了 Masonry 视图的分组体验，并增加固定标签页与搜索增强功能。
 
           ### 新增
 
-          - 新增移动端拖动手柄显示开关。
-          - 新用户默认开启移动端底部堆叠。
+          - Masonry 视图支持与 Card 视图一致的分组分隔显示。
+          - 新增右键固定/取消固定标签页。
+          - 搜索框支持按 Enter 激活第一个匹配标签页。
+          - 搜索匹配文本高亮显示。
 
           ### 改进
 
-          - 卡片和瀑布流视图的移动端拖动手柄改为左侧竖向区域，减少对上下滑动的干扰。
-          - 卡片和瀑布流视图在移动端常驻显示关闭按钮。
-          - 底部对齐改为按可见内容测量，只在内容未溢出时补齐空间，兼容正常滚动。
+          - 优化 Masonry 分组拖放区域，减少跨组排序误判。
+          - 稳定 Masonry 刷新布局，降低拖放后的卡片跳动。
+          - 固定标签页新增折角标记，并在 hover 时显示取消固定按钮。
+          - 优化标签页关闭/固定按钮的浮现动画。
+          - 改进图标与标题在不同字号下的纵向对齐。
 
-          ### 修复
+          ## English
 
-          - 修复加入手柄后卡片和瀑布流标题宽度异常。
-          - 修复移动端切换视图后滚动偶发卡在底部的问题。
-          - 降低拖动手柄与侧边栏横滑收起手势的冲突。
+          This update improves grouped Masonry behavior and adds pinned tabs plus richer search interactions.
 
-          ### 说明
+          ### New
 
-          - 桌面端行为保持不变。
+          - Added group separators to Masonry view, matching Card view behavior.
+          - Added context-menu actions to pin and unpin tabs.
+          - Search now activates the first matching tab with Enter.
+          - Search matches are highlighted in tab titles.
+
+          ### Improved
+
+          - Improved Masonry drag-and-drop hit areas around groups.
+          - Stabilized Masonry layout refreshes to reduce card jumping after drops.
+          - Added a corner ribbon marker for pinned tabs, with hover-to-unpin behavior.
+          - Refined close/pin button reveal animations.
+          - Improved vertical alignment between tab icons and titles across font sizes.
           EOF
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
