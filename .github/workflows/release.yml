@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag to rebuild and attest"
         required: true
-        default: "1.3.1"
+        default: "1.3.2"
 
 permissions:
   contents: write
@@ -69,21 +69,17 @@ jobs:
           cat > release-notes.md <<'EOF'
           ## 中文
 
-          本次补丁修复移动端按钮布局细节，建议所有 1.3.0 用户升级。
+          本次补丁增强移动端拖动手柄的可见性。
 
-          ### 修复
-
-          - 修复移动端按钮布局问题。
-          - 保留 1.3.0 中的 Masonry 分组、固定标签页和搜索增强功能。
+          - 增大列表视图拖动手柄图标尺寸和笔画。
+          - 提升拖动手柄默认状态与拖动状态的对比度。
 
           ## English
 
-          This patch fixes mobile button layout details and is recommended for all 1.3.0 users.
+          This patch improves mobile drag handle visibility.
 
-          ### Fixed
-
-          - Fixed mobile button layout behavior.
-          - Keeps the Masonry grouping, pinned tabs, and search improvements introduced in 1.3.0.
+          - Increased the list-view drag handle icon size and stroke width.
+          - Improved drag handle contrast in both idle and dragging states.
           EOF
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
