@@ -72,7 +72,6 @@ interface PointerDragState {
 	pointerId: number;
 	lastX: number;
 	lastY: number;
-	previousSourceTouchAction: string;
 }
 
 export class TabController {
@@ -501,14 +500,13 @@ export class TabController {
 			pointerId: event.pointerId,
 			lastX: event.clientX,
 			lastY: event.clientY,
-			previousSourceTouchAction: el.getCssPropertyValue("touch-action"),
 		};
-		el.setCssProps({ "touch-action": "none" });
 		this.draggedId = id;
 		this.dragSourceEl = el;
 		this.invalidateDragGeometry();
 		this.rootEl.toggleClass("is-dragging", true);
 		el.toggleClass("is-drag-source", true);
+		el.toggleClass("is-touch-drag-source", true);
 		this.updatePointerDropTarget(event.clientX, event.clientY);
 	}
 
@@ -531,7 +529,6 @@ export class TabController {
 		if (state.handleEl.hasPointerCapture(event.pointerId)) {
 			state.handleEl.releasePointerCapture(event.pointerId);
 		}
-		this.restorePointerDragTouchAction(state);
 		const sourceId = this.draggedId ?? state.id;
 		const targetId = this.dragOverId;
 		const position = this.dropPosition;
@@ -557,15 +554,8 @@ export class TabController {
 		if (state.handleEl.hasPointerCapture(event.pointerId)) {
 			state.handleEl.releasePointerCapture(event.pointerId);
 		}
-		this.restorePointerDragTouchAction(state);
 		this.pointerDragState = null;
 		this.clearAllDragState();
-	}
-
-	private restorePointerDragTouchAction(state: PointerDragState): void {
-		state.sourceEl.setCssProps({
-			"touch-action": state.previousSourceTouchAction,
-		});
 	}
 
 	private stopMobileHandleTouch(event: TouchEvent): void {
@@ -1585,6 +1575,7 @@ export class TabController {
 		this.pointerDragState = null;
 		this.stopAutoScroll();
 		this.dragSourceEl?.toggleClass("is-drag-source", false);
+		this.dragSourceEl?.toggleClass("is-touch-drag-source", false);
 		this.dragSourceEl = null;
 		this.invalidateDragGeometry();
 		this.clearGroupDropTarget();
