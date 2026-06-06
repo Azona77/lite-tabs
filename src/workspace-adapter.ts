@@ -6,8 +6,6 @@ type RootLeafIterator = (callback: (leaf: WorkspaceLeaf) => void) => void;
 
 interface WorkspaceRuntime {
 	iterateRootLeaves?: RootLeafIterator;
-	requestResize?: () => void;
-	onLayoutChange?: () => void;
 }
 
 interface RuntimeLeaf {
@@ -112,8 +110,8 @@ function getLeafMoveContext(
 ): LeafMoveContext | null {
 	if (sourceId === targetId) return null;
 
-	const sourceLeaf = app.workspace.getLeafById(sourceId);
-	const targetLeaf = app.workspace.getLeafById(targetId);
+	const sourceLeaf = getMainLeafById(app, sourceId);
+	const targetLeaf = getMainLeafById(app, targetId);
 	if (!sourceLeaf || !targetLeaf) return null;
 
 	const sourceParent = getRuntimeParent(sourceLeaf);
@@ -151,9 +149,18 @@ function getInsertIndex(
 }
 
 function notifyWorkspaceLayout(app: App): void {
-	const workspace = app.workspace as typeof app.workspace & WorkspaceRuntime;
-	workspace.requestResize?.();
-	workspace.onLayoutChange?.();
+	app.workspace.trigger("layout-change");
+}
+
+function getMainLeafById(app: App, id: string): WorkspaceLeaf | null {
+	let result: WorkspaceLeaf | null = null;
+	forEachMainLeaf(app, (leaf) => {
+		if (result) return;
+		if (getLeafId(leaf) === id) {
+			result = leaf;
+		}
+	});
+	return result;
 }
 
 function asRuntimeLeaf(leaf: WorkspaceLeaf): RuntimeLeaf {

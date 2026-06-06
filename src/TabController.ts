@@ -175,15 +175,15 @@ export class TabController {
 
 	dispose(): void {
 		if (this.frame !== null) {
-			cancelAnimationFrame(this.frame);
+			this.cancelFrame(this.frame);
 			this.frame = null;
 		}
 		if (this.masonryFrame !== null) {
-			cancelAnimationFrame(this.masonryFrame);
+			this.cancelFrame(this.masonryFrame);
 			this.masonryFrame = null;
 		}
 		if (this.overflowFrame !== null) {
-			cancelAnimationFrame(this.overflowFrame);
+			this.cancelFrame(this.overflowFrame);
 			this.overflowFrame = null;
 		}
 		this.stopAutoScroll();
@@ -194,9 +194,30 @@ export class TabController {
 		this.rootEl.remove();
 	}
 
+	private requestFrame(callback: FrameRequestCallback): number {
+		return this.rootEl.win.requestAnimationFrame(callback);
+	}
+
+	private cancelFrame(handle: number): void {
+		this.rootEl.win.cancelAnimationFrame(handle);
+	}
+
+	private isMobile(): boolean {
+		return activeDocument.body.hasClass("is-mobile");
+	}
+
+	private isHTMLElement(value: EventTarget | Node | null): value is HTMLElement {
+		return (
+			!!value &&
+			"instanceOf" in value &&
+			typeof value.instanceOf === "function" &&
+			value.instanceOf(HTMLElement)
+		);
+	}
+
 	scheduleRefresh(): void {
 		if (this.frame !== null) return;
-		this.frame = requestAnimationFrame(() => {
+		this.frame = this.requestFrame(() => {
 			this.frame = null;
 			this.refreshStructure();
 		});
@@ -204,7 +225,7 @@ export class TabController {
 
 	forceRefresh(): void {
 		if (this.frame !== null) {
-			cancelAnimationFrame(this.frame);
+			this.cancelFrame(this.frame);
 			this.frame = null;
 		}
 		this.structureSignature = null;
@@ -466,7 +487,7 @@ export class TabController {
 		handleEl: HTMLElement,
 		event: PointerEvent
 	): void {
-		if (!document.body.hasClass("is-mobile")) return;
+		if (!this.isMobile()) return;
 		if (!this.plugin.settings.showMobileDragHandles) return;
 		if (event.button !== 0 || this.isFilterActive()) return;
 		event.preventDefault();
@@ -480,9 +501,9 @@ export class TabController {
 			pointerId: event.pointerId,
 			lastX: event.clientX,
 			lastY: event.clientY,
-			previousSourceTouchAction: el.style.touchAction,
+			previousSourceTouchAction: el.getCssPropertyValue("touch-action"),
 		};
-		el.style.touchAction = "none";
+		el.setCssProps({ "touch-action": "none" });
 		this.draggedId = id;
 		this.dragSourceEl = el;
 		this.invalidateDragGeometry();
@@ -542,11 +563,13 @@ export class TabController {
 	}
 
 	private restorePointerDragTouchAction(state: PointerDragState): void {
-		state.sourceEl.style.touchAction = state.previousSourceTouchAction;
+		state.sourceEl.setCssProps({
+			"touch-action": state.previousSourceTouchAction,
+		});
 	}
 
 	private stopMobileHandleTouch(event: TouchEvent): void {
-		if (!document.body.hasClass("is-mobile")) return;
+		if (!this.isMobile()) return;
 		event.preventDefault();
 		event.stopPropagation();
 		event.stopImmediatePropagation();
@@ -564,13 +587,13 @@ export class TabController {
 			},
 		});
 		setIcon(button, this.getLayoutIcon(style));
-		button.addEventListener("click", async () => {
+		button.addEventListener("click", () => {
 			if (this.plugin.settings.layoutStyle === style) return;
 			this.plugin.settings.layoutStyle = style;
 			this.plugin.applySettings();
 			this.forceRefresh();
 			this.syncLayoutButtons();
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 		return button;
 	}
@@ -598,12 +621,12 @@ export class TabController {
 				title: "Toggle file icons",
 			},
 		});
-		button.addEventListener("click", async () => {
+		button.addEventListener("click", () => {
 			this.plugin.settings.showIcons = !this.plugin.settings.showIcons;
 			this.plugin.applySettings();
 			this.syncIconButton();
 			this.scheduleMasonryLayout();
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 		return button;
 	}
@@ -622,12 +645,12 @@ export class TabController {
 				title: "Hide inactive tabs",
 			},
 		});
-		button.addEventListener("click", async () => {
+		button.addEventListener("click", () => {
 			this.plugin.settings.hideNativeTabs =
 				!this.plugin.settings.hideNativeTabs;
 			this.plugin.applySettings();
 			this.syncInactiveTabsButton();
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		});
 		return button;
 	}
@@ -872,9 +895,11 @@ export class TabController {
 		const key = `${Math.round(x)}:${Math.round(y)}:${Math.round(width)}:${Math.round(height)}`;
 		if (this.indicatorKey === key) return;
 		this.indicatorKey = key;
-		this.dropIndicatorEl.style.width = `${width}px`;
-		this.dropIndicatorEl.style.height = `${height}px`;
-		this.dropIndicatorEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+		this.dropIndicatorEl.setCssProps({
+			width: `${width}px`,
+			height: `${height}px`,
+			transform: `translate3d(${x}px, ${y}px, 0)`,
+		});
 		this.dropIndicatorEl.toggleClass("is-visible", true);
 	}
 
@@ -1089,9 +1114,9 @@ export class TabController {
 
 	private getEventRow(event: DragEvent): HTMLElement | null {
 		const target = event.target;
-		if (target instanceof HTMLElement) {
+		if (this.isHTMLElement(target)) {
 			const row = target.closest(".lite-tabs-item");
-			if (row instanceof HTMLElement) return row;
+			if (this.isHTMLElement(row)) return row;
 		}
 		return this.getRowAtPoint(event.clientX, event.clientY);
 	}
@@ -1428,7 +1453,7 @@ export class TabController {
 	): string | null {
 		if (!this.draggedId) return null;
 		if (
-			target instanceof HTMLElement &&
+			this.isHTMLElement(target) &&
 			target.closest(".lite-tabs-item")
 		) {
 			return null;
@@ -1473,7 +1498,7 @@ export class TabController {
 		target: EventTarget | null
 	): boolean {
 		if (
-			target instanceof HTMLElement &&
+			this.isHTMLElement(target) &&
 			target.closest(".lite-tabs-group-separator")
 		) {
 			return true;
@@ -1505,7 +1530,7 @@ export class TabController {
 	}
 
 	private isInsideDropTarget(target: EventTarget | null): boolean {
-		if (!(target instanceof HTMLElement)) return false;
+		if (!this.isHTMLElement(target)) return false;
 		return !!target.closest(".lite-tabs-item, .lite-tabs-group-separator");
 	}
 
@@ -1524,7 +1549,7 @@ export class TabController {
 			return;
 		}
 		if (this.autoScrollFrame !== null) return;
-		this.autoScrollFrame = requestAnimationFrame(() => {
+		this.autoScrollFrame = this.requestFrame(() => {
 			this.stepAutoScroll();
 		});
 	}
@@ -1543,7 +1568,7 @@ export class TabController {
 			this.invalidateDragGeometry();
 			this.updatePointerDropTarget(state.lastX, state.lastY);
 		}
-		this.autoScrollFrame = requestAnimationFrame(() => {
+		this.autoScrollFrame = this.requestFrame(() => {
 			this.stepAutoScroll();
 		});
 	}
@@ -1551,7 +1576,7 @@ export class TabController {
 	private stopAutoScroll(): void {
 		this.autoScrollVelocity = 0;
 		if (this.autoScrollFrame !== null) {
-			cancelAnimationFrame(this.autoScrollFrame);
+			this.cancelFrame(this.autoScrollFrame);
 			this.autoScrollFrame = null;
 		}
 	}
@@ -1666,7 +1691,7 @@ export class TabController {
 
 	private scheduleMasonryLayout(): void {
 		if (this.masonryFrame !== null) return;
-		this.masonryFrame = requestAnimationFrame(() => {
+		this.masonryFrame = this.requestFrame(() => {
 			this.masonryFrame = null;
 			this.applyMasonryLayout();
 		});
@@ -1674,7 +1699,7 @@ export class TabController {
 
 	private flushMasonryLayout(): void {
 		if (this.masonryFrame !== null) {
-			cancelAnimationFrame(this.masonryFrame);
+			this.cancelFrame(this.masonryFrame);
 			this.masonryFrame = null;
 		}
 		this.applyMasonryLayout();
@@ -1682,7 +1707,7 @@ export class TabController {
 
 	private scheduleListOverflowCheck(): void {
 		if (this.overflowFrame !== null) return;
-		this.overflowFrame = requestAnimationFrame(() => {
+		this.overflowFrame = this.requestFrame(() => {
 			this.overflowFrame = null;
 			this.syncListOverflowState();
 		});
@@ -1694,7 +1719,7 @@ export class TabController {
 		const availableHeight = this.getListContentHeight();
 		const isOverflowing = contentHeight > availableHeight + tolerance;
 		const shouldStackBottom =
-			document.body.hasClass("is-mobile") &&
+			this.isMobile() &&
 			this.plugin.settings.mobileStackBottom &&
 			!isOverflowing;
 		const spacer = shouldStackBottom
@@ -1716,7 +1741,7 @@ export class TabController {
 	private getVisibleContentHeight(): number {
 		const elements = Array.from(this.listEl.children).filter(
 			(child): child is HTMLElement =>
-				child instanceof HTMLElement &&
+				child.instanceOf(HTMLElement) &&
 				child !== this.bottomSpacerEl &&
 				child !== this.dropIndicatorEl &&
 				child.isShown()
@@ -1759,13 +1784,13 @@ export class TabController {
 		const roundedHeight = Math.max(0, Math.floor(height));
 		if (roundedHeight === this.bottomSpacerHeight) return;
 		this.bottomSpacerHeight = roundedHeight;
-		this.bottomSpacerEl.style.display =
-			roundedHeight > 0 ? "block" : "none";
-		this.bottomSpacerEl.style.height = `${roundedHeight}px`;
-		this.bottomSpacerEl.style.setProperty(
-			"--lite-tabs-bottom-spacer-span",
-			String(Math.max(1, roundedHeight))
-		);
+		this.bottomSpacerEl.setCssProps({
+			display: roundedHeight > 0 ? "block" : "none",
+			height: `${roundedHeight}px`,
+			"--lite-tabs-bottom-spacer-span": String(
+				Math.max(1, roundedHeight)
+			),
+		});
 	}
 
 	private applyMasonryLayout(): void {
@@ -1822,25 +1847,25 @@ export class TabController {
 	): void {
 		for (const { el, span } of entries) {
 			if (span === null) {
-				el.style.removeProperty("--lite-tabs-masonry-span");
+				el.setCssProps({ "--lite-tabs-masonry-span": "" });
 				continue;
 			}
 			const nextValue = String(span);
-			if (el.style.getPropertyValue("--lite-tabs-masonry-span") === nextValue) {
+			if (el.getCssPropertyValue("--lite-tabs-masonry-span") === nextValue) {
 				continue;
 			}
-			el.style.setProperty("--lite-tabs-masonry-span", nextValue);
+			el.setCssProps({ "--lite-tabs-masonry-span": nextValue });
 		}
 	}
 
 	private clearMasonrySpans(): void {
 		for (const row of this.rows.values()) {
-			row.el.style.removeProperty("--lite-tabs-masonry-span");
+			row.el.setCssProps({ "--lite-tabs-masonry-span": "" });
 		}
 		for (const { el } of this.groupSeparators) {
-			el.style.removeProperty("--lite-tabs-masonry-span");
+			el.setCssProps({ "--lite-tabs-masonry-span": "" });
 		}
-		this.emptyEl.style.removeProperty("--lite-tabs-masonry-span");
+		this.emptyEl.setCssProps({ "--lite-tabs-masonry-span": "" });
 		this.invalidateDragGeometry();
 		this.applyPendingMoveFeedback();
 		this.scheduleListOverflowCheck();
@@ -1946,7 +1971,7 @@ export class TabController {
 	private applyFilter(): void {
 		const hasFilter = this.isFilterActive();
 		const allowNativeDrag =
-			!hasFilter && !document.body.hasClass("is-mobile");
+			!hasFilter && !this.isMobile();
 		let visibleCount = 0;
 		for (const row of this.rows.values()) {
 			const visible =

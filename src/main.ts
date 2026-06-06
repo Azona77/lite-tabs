@@ -52,13 +52,15 @@ export default class LiteTabsPlugin extends Plugin {
 		);
 
 		this.addCommand({
-			id: "open-lite-tabs",
-			name: "Open Lite Tabs",
-			callback: () => this.openView(),
+			id: "open",
+			name: "Open",
+			callback: () => {
+				void this.openView();
+			},
 		});
 		this.addCommand({
-			id: "refresh-lite-tabs",
-			name: "Refresh Lite Tabs panel",
+			id: "refresh-panel",
+			name: "Refresh panel",
 			callback: () => this.refreshViews(true),
 		});
 
@@ -66,22 +68,22 @@ export default class LiteTabsPlugin extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => {
 			if (!this.isLoaded) return;
-			this.openView(false);
+			void this.openView(false);
 		});
 	}
 
 	onunload(): void {
 		this.isLoaded = false;
-		document.body.removeClass("lite-tabs-hide-native");
-		document.body.removeClass("lite-tabs-layout-card");
-		document.body.removeClass("lite-tabs-layout-list");
-		document.body.removeClass("lite-tabs-layout-masonry");
-		document.body.removeClass("lite-tabs-mobile-stack-bottom");
-		document.body.removeClass("lite-tabs-mobile-hide-handles");
-		document.body.removeClass("lite-tabs-hide-icons");
-		document.body.removeClass("lite-tabs-hide-toolbar");
-		document.body.removeClass("lite-tabs-active-background");
-		document.body.removeClass("lite-tabs-active-border");
+		this.body.removeClass("lite-tabs-hide-native");
+		this.body.removeClass("lite-tabs-layout-card");
+		this.body.removeClass("lite-tabs-layout-list");
+		this.body.removeClass("lite-tabs-layout-masonry");
+		this.body.removeClass("lite-tabs-mobile-stack-bottom");
+		this.body.removeClass("lite-tabs-mobile-hide-handles");
+		this.body.removeClass("lite-tabs-hide-icons");
+		this.body.removeClass("lite-tabs-hide-toolbar");
+		this.body.removeClass("lite-tabs-active-background");
+		this.body.removeClass("lite-tabs-active-border");
 		this.clearStyleVariables();
 	}
 
@@ -94,43 +96,43 @@ export default class LiteTabsPlugin extends Plugin {
 	}
 
 	applySettings(): void {
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-hide-native",
 			this.settings.hideNativeTabs
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-layout-card",
 			this.settings.layoutStyle === "card"
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-layout-list",
 			this.settings.layoutStyle === "list"
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-layout-masonry",
 			this.settings.layoutStyle === "masonry"
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-mobile-stack-bottom",
 			this.settings.mobileStackBottom
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-mobile-hide-handles",
 			!this.settings.showMobileDragHandles
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-hide-icons",
 			!this.settings.showIcons
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-hide-toolbar",
 			this.settings.hideToolbar
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-active-background",
 			this.settings.activeTabBackground
 		);
-		document.body.toggleClass(
+		this.body.toggleClass(
 			"lite-tabs-active-border",
 			this.settings.activeTabBorder
 		);
@@ -154,27 +156,22 @@ export default class LiteTabsPlugin extends Plugin {
 			"--lite-tabs-list-font-size",
 			this.settings.listFontSize
 		);
-		document.body.style.setProperty(
-			"--lite-tabs-card-width",
-			`${this.settings.cardWidth}px`
-		);
-		document.body.style.setProperty(
-			"--lite-tabs-card-height",
-			`${this.settings.cardHeight}px`
-		);
+		this.body.setCssProps({
+			"--lite-tabs-card-width": `${this.settings.cardWidth}px`,
+			"--lite-tabs-card-height": `${this.settings.cardHeight}px`,
+		});
 		this.setPixelVariable(
 			"--lite-tabs-card-font-size",
 			this.settings.cardFontSize
 		);
 		this.setPixelVariable("--lite-tabs-card-gap", this.settings.cardGap);
-		document.body.style.setProperty(
-			"--lite-tabs-active-background-strength",
-			`${this.settings.activeTabEmphasis}%`
-		);
+		this.body.setCssProps({
+			"--lite-tabs-active-background-strength": `${this.settings.activeTabEmphasis}%`,
+		});
 	}
 
 	private setPixelVariable(name: string, value: number): void {
-		document.body.style.setProperty(name, `${value}px`);
+		this.body.setCssProps({ [name]: `${value}px` });
 	}
 
 	private clearStyleVariables(): void {
@@ -190,7 +187,7 @@ export default class LiteTabsPlugin extends Plugin {
 			"--lite-tabs-card-gap",
 			"--lite-tabs-active-background-strength",
 		]) {
-			document.body.style.removeProperty(property);
+			this.body.setCssProps({ [property]: "" });
 		}
 	}
 
@@ -199,10 +196,9 @@ export default class LiteTabsPlugin extends Plugin {
 			LITE_TABS_VIEW_TYPE
 		)[0];
 		const leaf = existing ?? this.app.workspace.getLeftLeaf(false);
+		if (!leaf) return;
 		await leaf.setViewState({ type: LITE_TABS_VIEW_TYPE, active: true });
-		if (reveal) {
-			this.app.workspace.revealLeaf(leaf);
-		}
+		if (reveal) this.app.workspace.setActiveLeaf(leaf, { focus: true });
 	}
 
 	refreshViews(force = false): void {
@@ -226,5 +222,9 @@ export default class LiteTabsPlugin extends Plugin {
 			.getLeavesOfType(LITE_TABS_VIEW_TYPE)
 			.map((leaf: WorkspaceLeaf) => leaf.view)
 			.filter((view): view is LiteTabsView => view instanceof LiteTabsView);
+	}
+
+	private get body(): HTMLElement {
+		return activeDocument.body;
 	}
 }

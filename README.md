@@ -65,8 +65,8 @@ The production build outputs `main.js` to the repository root.
 
 ## Commands
 
-- `Open Lite Tabs`: Open or reveal the Lite Tabs panel.
-- `Refresh Lite Tabs panel`: Rebuild the panel based on the current workspace state.
+- `Open`: Open the Lite Tabs panel.
+- `Refresh panel`: Rebuild the panel based on the current workspace state.
 
 # 中文
 
