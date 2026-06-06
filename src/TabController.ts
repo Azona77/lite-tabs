@@ -21,6 +21,7 @@ interface RowRecord {
 	renderedTitle: string;
 	renderedTitleQuery: string | null;
 	renderedIcon: string;
+	renderedPath: string | null;
 	renderedParentId: string;
 	renderedPinned: boolean;
 	active: boolean;
@@ -317,7 +318,7 @@ export class TabController {
 		return `${this.getLayoutSignature()}|${items
 			.map(
 				(item) =>
-					`${item.id}\u001f${item.parentId}\u001f${item.title}\u001f${item.icon}\u001f${item.pinned}`
+					`${item.id}\u001f${item.parentId}\u001f${item.title}\u001f${item.icon}\u001f${item.path ?? ""}\u001f${item.pinned}`
 			)
 			.join("\u001e")}`;
 	}
@@ -440,6 +441,7 @@ export class TabController {
 			renderedTitle: "",
 			renderedTitleQuery: null,
 			renderedIcon: "",
+			renderedPath: null,
 			renderedParentId: "",
 			renderedPinned: false,
 			active: false,
@@ -1905,6 +1907,14 @@ export class TabController {
 		if (row.renderedTitle !== item.title) {
 			row.el.title = item.title;
 			this.renderRowTitle(row);
+		}
+		if (row.renderedPath !== item.path) {
+			if (item.path) {
+				row.el.dataset.path = item.path;
+			} else {
+				delete row.el.dataset.path;
+			}
+			row.renderedPath = item.path;
 		}
 		if (row.renderedParentId !== item.parentId) {
 			row.el.dataset.parentId = item.parentId;

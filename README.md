@@ -13,6 +13,7 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 - Click to activate a tab, middle-click or use the close button to close a tab, and drag to reorder tabs.
 - Minimal display options: hide file icons, toolbar, or inactive tabs.
 - Customizable styles: size of the vertical list, card, or masonry view, font size, divider size, and basic highlight style.
+- File-backed tabs expose `data-path` on `.lite-tabs-item` for custom CSS targeting.
 
 ## Performance
 
@@ -32,6 +33,16 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 - Changes only the workspace tab state when you activate, close, or reorder tabs.
 
 Run `npm run check:boundaries` before release to check for common forbidden APIs.
+
+## Custom CSS
+
+File-backed tabs include a vault-relative `data-path` attribute on `.lite-tabs-item`, so snippets can target folders or specific files:
+
+```css
+.lite-tabs-item[data-path^="ExamplePath/"] {
+	background-color: #441111;
+}
+```
 
 ## Installation
 
@@ -76,6 +87,16 @@ Lite Tabs 是一个轻量级 Obsidian 插件，用独立侧边栏面板展示当
 - 活跃标签变化只更新活跃状态 class。
 - 瀑布流布局使用测量后的 CSS grid span 和合并刷新，不维护持久布局缓存。
 - 不维护大体量持久缓存，不同步自定义分组标题。
+
+## 自定义 CSS
+
+基于文件的标签页在 `.lite-tabs-item` 上包含一个相对于仓库路径的 `data-path` 属性，可以针对特定文件夹或文件进行样式设置：
+
+```css
+.lite-tabs-item[data-path^="ExamplePath/"] {
+	background-color: #441111;
+}
+```
 
 ## 安装
 

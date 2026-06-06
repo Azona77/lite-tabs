@@ -1,4 +1,4 @@
-import { App, WorkspaceLeaf, setIcon } from "obsidian";
+import { App, FileView, WorkspaceLeaf, setIcon } from "obsidian";
 import {
 	forEachMainLeaf,
 	getActiveTabId,
@@ -21,6 +21,7 @@ export interface TabItem {
 	leaf: WorkspaceLeaf;
 	title: string;
 	icon: string;
+	path: string | null;
 	parentId: string;
 	active: boolean;
 	pinned: boolean;
@@ -39,6 +40,7 @@ export function collectTabs(app: App): TabItem[] {
 			leaf,
 			title: leaf.getDisplayText(),
 			icon: leaf.getIcon(),
+			path: getLeafPath(leaf),
 			parentId: getLeafParentId(leaf),
 			active: activeId === id,
 			pinned: !!leaf.getViewState().pinned,
@@ -46,6 +48,12 @@ export function collectTabs(app: App): TabItem[] {
 	});
 
 	return items;
+}
+
+function getLeafPath(leaf: WorkspaceLeaf): string | null {
+	const view = leaf.view;
+	if (!(view instanceof FileView)) return null;
+	return view.file?.path ?? null;
 }
 
 export function moveLeafBefore(
