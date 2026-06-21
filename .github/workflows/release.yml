@@ -50,6 +50,12 @@ jobs:
       - name: Check safety boundaries
         run: npm run check:boundaries
 
+      - name: Test
+        run: npm test
+
+      - name: Check version consistency
+        run: npm run check:versions
+
       - name: Build
         run: npm run build
 

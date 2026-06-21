@@ -139,6 +139,12 @@ body.lite-tabs-hide-toolbar .lite-tabs-toolbar {
     display: none;
 }
 
+body.lite-tabs-hide-toolbar
+    .lite-tabs-root.is-search-revealed
+    .lite-tabs-toolbar {
+    display: flex;
+}
+
 button.lite-tabs-layout-button,
 button.lite-tabs-toolbar-button {
     align-items: center;
@@ -264,6 +270,12 @@ body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
 
 .lite-tabs-item:hover {
     background: var(--background-modifier-hover);
+}
+
+.lite-tabs-item:focus-visible {
+    background: var(--background-modifier-hover);
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
 }
 
 .lite-tabs-item.is-active {
@@ -397,12 +409,15 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
 .lite-tabs-close {
     align-items: center;
     background: var(--background-primary);
+    border: 0;
     border-radius: 4px;
+    box-shadow: none;
     color: var(--text-muted);
     display: flex;
     height: 22px;
     justify-content: center;
     opacity: 0;
+    padding: 0;
     pointer-events: none;
     position: absolute;
     right: 4px;
@@ -542,7 +557,18 @@ body.is-mobile .lite-tabs-root.is-dragging .lite-tabs-drag-handle {
     transform: translate3d(0, -50%, 0);
 }
 
+.lite-tabs-item:focus-within .lite-tabs-close {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate3d(0, -50%, 0);
+}
+
 body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close, body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close {
+    transform: translate3d(0, 0, 0);
+}
+
+body.lite-tabs-layout-card .lite-tabs-item:focus-within .lite-tabs-close,
+body.lite-tabs-layout-masonry .lite-tabs-item:focus-within .lite-tabs-close {
     transform: translate3d(0, 0, 0);
 }
 
@@ -554,6 +580,11 @@ body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close, body.lite-tab
 .lite-tabs-close:hover {
     background: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+
+.lite-tabs-close:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
 }
 
 .lite-tabs-item.is-pinned .lite-tabs-close:hover {

@@ -1,4 +1,5 @@
 import { App, View, WorkspaceLeaf } from "obsidian";
+import { getRelativeInsertIndex } from "./tab-logic";
 
 export type LeafMovePosition = "before" | "after";
 
@@ -136,16 +137,12 @@ function getInsertIndex(
 	context: LeafMoveContext,
 	position: LeafMovePosition
 ): number | null {
-	let insertIndex =
-		position === "after" ? context.targetIndex + 1 : context.targetIndex;
-	const sameParent = context.sourceParent.id === context.targetParent.id;
-	if (sameParent && context.sourceIndex < insertIndex) {
-		insertIndex -= 1;
-	}
-	if (sameParent && context.sourceIndex === insertIndex) {
-		return null;
-	}
-	return insertIndex;
+	return getRelativeInsertIndex(
+		context.sourceIndex,
+		context.targetIndex,
+		position,
+		context.sourceParent.id === context.targetParent.id
+	);
 }
 
 function notifyWorkspaceLayout(app: App): void {

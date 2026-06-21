@@ -10,6 +10,15 @@ import {
 	moveLeafRelative,
 	renderIcon,
 } from "./tabs";
+import {
+	createStructureSignature,
+	getAdjacentVisibleId,
+	getAutoScrollVelocity,
+	isNoopRelativeMove,
+	matchesTabTitle,
+	normalizeAdjacentDropTarget,
+} from "./tab-logic";
+
 
 interface RowRecord {
 	item: TabItem;
@@ -142,6 +151,8 @@ export class TabController {
 		this.refreshButtonEl = this.createRefreshButton();
 		this.searchInputEl = this.createSearchInput();
 		this.listEl = this.rootEl.createDiv({ cls: "lite-tabs-list" });
+		this.listEl.setAttr("role", "list");
+		this.listEl.setAttr("aria-label", "Open tabs");
 		this.listEl.addEventListener("dragover", (event) => {
 			this.handleListDragOver(event);
 		});
@@ -158,6 +169,7 @@ export class TabController {
 			cls: "lite-tabs-empty",
 			text: "No open tabs",
 		});
+		this.emptyEl.setAttr("role", "status");
 		this.dropIndicatorEl = this.listEl.createDiv({
 			cls: "lite-tabs-drop-indicator",
 		});
@@ -229,6 +241,12 @@ export class TabController {
 		}
 		this.structureSignature = null;
 		this.refreshStructure(true);
+	}
+
+	focusSearch(): void {
+		this.rootEl.addClass("is-search-revealed");
+		this.searchInputEl.focus();
+		this.searchInputEl.select();
 	}
 
 	refreshStructure(force = false): void {
@@ -324,23 +342,24 @@ export class TabController {
 		if (this.activeId) {
 			const row = this.rows.get(this.activeId);
 			row?.el.toggleClass("is-active", false);
-			if (row) row.active = false;
+			if (row) {
+				row.el.removeAttribute("aria-current");
+				row.active = false;
+			}
 		}
 		if (active) {
 			const row = this.rows.get(active);
 			row?.el.toggleClass("is-active", true);
-			if (row) row.active = true;
+			if (row) {
+				row.el.setAttr("aria-current", "true");
+				row.active = true;
+			}
 		}
 		this.activeId = active;
 	}
 
 	private getStructureSignature(items: TabItem[]): string {
-		return `${this.getLayoutSignature()}|${items
-			.map(
-				(item) =>
-					`${item.id}\u001f${item.parentId}\u001f${item.title}\u001f${item.icon}\u001f${item.path ?? ""}\u001f${item.pinned}`
-			)
-			.join("\u001e")}`;
+		return createStructureSignature(this.getLayoutSignature(), items);
 	}
 
 	private getLayoutSignature(): string {
@@ -353,17 +372,27 @@ export class TabController {
 	private createRow(item: TabItem): RowRecord {
 		const el = createDiv({ cls: "lite-tabs-item" });
 		el.dataset.leafId = item.id;
+		el.setAttr("role", "listitem");
+		el.setAttr("tabindex", "0");
+		el.setAttr("aria-label", item.title);
+		el.setAttr(
+			"aria-keyshortcuts",
+			"Enter Space ArrowUp ArrowDown Home End Escape"
+		);
 		el.draggable = true;
 
 		const handleEl = el.createDiv({ cls: "lite-tabs-drag-handle" });
 		const iconEl = el.createDiv({ cls: "lite-tabs-icon" });
 		const titleEl = el.createDiv({ cls: "lite-tabs-title" });
-		const closeEl = el.createDiv({ cls: "lite-tabs-close" });
+		const closeEl = el.createEl("button", {
+			cls: "lite-tabs-close",
+			attr: { type: "button" },
+		});
 		handleEl.draggable = false;
 		iconEl.draggable = true;
 		titleEl.draggable = true;
 		closeEl.draggable = false;
-		handleEl.setAttr("aria-label", "Drag tab");
+		handleEl.setAttr("aria-hidden", "true");
 		handleEl.setAttr("title", "Drag tab");
 		setIcon(handleEl, "grip-vertical");
 		renderIcon(closeEl, "x");
@@ -387,6 +416,10 @@ export class TabController {
 				return;
 			}
 			this.activateLeaf(item.leaf);
+		});
+		el.addEventListener("keydown", (event) => {
+			if (event.target !== el) return;
+			this.handleRowKeydown(item.id, event);
 		});
 		el.addEventListener("auxclick", (event) => {
 			if (event.button === 1) {
@@ -468,6 +501,50 @@ export class TabController {
 		};
 		this.updateRow(row, item);
 		return row;
+	}
+
+	private handleRowKeydown(id: string, event: KeyboardEvent): void {
+		if (event.key === "Enter" || event.key === " ") {
+			event.preventDefault();
+			const row = this.rows.get(id);
+			if (row) this.activateLeaf(row.item.leaf);
+			return;
+		}
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			this.focusAdjacentVisibleTab(
+				id,
+				event.key === "ArrowDown" ? 1 : -1
+			);
+			return;
+		}
+		if (event.key === "Home" || event.key === "End") {
+			event.preventDefault();
+			this.focusAdjacentVisibleTab(
+				null,
+				event.key === "Home" ? 1 : -1
+			);
+			return;
+		}
+		if (event.key === "Escape") {
+			event.preventDefault();
+			this.focusSearch();
+		}
+	}
+
+	private focusAdjacentVisibleTab(
+		currentId: string | null,
+		direction: -1 | 1
+	): boolean {
+		const id = getAdjacentVisibleId(
+			this.orderedIds,
+			currentId,
+			direction,
+			(candidateId) => this.rows.get(candidateId)?.el.isShown() ?? false
+		);
+		if (!id) return false;
+		this.rows.get(id)?.el.focus();
+		return true;
 	}
 
 	private startDrag(id: string, el: HTMLElement, event: DragEvent): void {
@@ -601,6 +678,9 @@ export class TabController {
 		this.listButtonEl.toggleClass("is-active", isList);
 		this.cardButtonEl.toggleClass("is-active", isCard);
 		this.masonryButtonEl.toggleClass("is-active", isMasonry);
+		this.listButtonEl.setAttr("aria-pressed", String(isList));
+		this.cardButtonEl.setAttr("aria-pressed", String(isCard));
+		this.masonryButtonEl.setAttr("aria-pressed", String(isMasonry));
 	}
 
 	private createIconButton(): HTMLButtonElement {
@@ -624,6 +704,7 @@ export class TabController {
 	private syncIconButton(): void {
 		const showIcons = this.plugin.settings.showIcons;
 		this.iconButtonEl.toggleClass("is-active", showIcons);
+		this.iconButtonEl.setAttr("aria-pressed", String(showIcons));
 		setIcon(this.iconButtonEl, showIcons ? "file" : "file-x");
 	}
 
@@ -648,6 +729,10 @@ export class TabController {
 	private syncInactiveTabsButton(): void {
 		const hideInactiveTabs = this.plugin.settings.hideNativeTabs;
 		this.inactiveTabsButtonEl.toggleClass("is-active", hideInactiveTabs);
+		this.inactiveTabsButtonEl.setAttr(
+			"aria-pressed",
+			String(hideInactiveTabs)
+		);
 		setIcon(this.inactiveTabsButtonEl, hideInactiveTabs ? "eye-off" : "eye");
 	}
 
@@ -677,29 +762,54 @@ export class TabController {
 		});
 		input.addEventListener("input", () => {
 			this.filterQuery = input.value.trim().toLocaleLowerCase();
+			this.syncSearchReveal();
 			this.clearAllDragState();
 			this.applyFilter();
 			this.scheduleMasonryLayout();
 		});
 		input.addEventListener("keydown", (event) => {
+			if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+				event.preventDefault();
+				this.focusAdjacentVisibleTab(
+					null,
+					event.key === "ArrowDown" ? 1 : -1
+				);
+				return;
+			}
 			if (event.key === "Enter") {
 				event.preventDefault();
 				event.stopPropagation();
 				this.activateFirstVisibleTab();
 				return;
 			}
-			if (event.key !== "Escape" || !input.value) return;
+			if (event.key !== "Escape") return;
 			event.stopPropagation();
+			if (!input.value) {
+				input.blur();
+				return;
+			}
 			input.value = "";
 			this.filterQuery = "";
+			this.syncSearchReveal();
 			this.applyFilter();
 			this.scheduleMasonryLayout();
 		});
+		input.addEventListener("blur", () => this.syncSearchReveal());
 		return input;
 	}
 
+	private syncSearchReveal(): void {
+		const shouldReveal =
+			this.filterQuery.length > 0 ||
+			this.searchInputEl.ownerDocument.activeElement === this.searchInputEl;
+		this.rootEl.toggleClass("is-search-revealed", shouldReveal);
+	}
+
 	private createGroupSeparator(): HTMLElement {
-		return createDiv({ cls: "lite-tabs-group-separator" });
+		return createDiv({
+			cls: "lite-tabs-group-separator",
+			attr: { role: "separator" },
+		});
 	}
 
 	private getCardColumnCount(): number {
@@ -810,17 +920,17 @@ export class TabController {
 		id: string,
 		position: "before" | "after"
 	): { id: string; position: "before" | "after" } {
-		if (position !== "after") {
-			return { id, position };
-		}
 		const index = this.orderedIndexById.get(id) ?? -1;
 		const current = this.rows.get(id);
 		const nextId = index >= 0 ? this.orderedIds[index + 1] : null;
 		const next = nextId ? this.rows.get(nextId) : null;
-		if (current && next && current.item.parentId === next.item.parentId) {
-			return { id: next.item.id, position: "before" };
-		}
-		return { id, position };
+		return normalizeAdjacentDropTarget(
+			id,
+			position,
+			nextId ?? null,
+			current?.item.parentId ?? null,
+			next?.item.parentId ?? null
+		);
 	}
 
 	private setGroupDropTarget(id: string): void {
@@ -1529,9 +1639,9 @@ export class TabController {
 		const edgeSize = Math.min(56, rect.height / 3);
 		let velocity = 0;
 		if (y < rect.top + edgeSize) {
-			velocity = -this.getAutoScrollVelocity(rect.top + edgeSize - y);
+			velocity = -getAutoScrollVelocity(rect.top + edgeSize - y);
 		} else if (y > rect.bottom - edgeSize) {
-			velocity = this.getAutoScrollVelocity(y - (rect.bottom - edgeSize));
+			velocity = getAutoScrollVelocity(y - (rect.bottom - edgeSize));
 		}
 		this.autoScrollVelocity = velocity;
 		if (velocity === 0) {
@@ -1542,10 +1652,6 @@ export class TabController {
 		this.autoScrollFrame = this.requestFrame(() => {
 			this.stepAutoScroll();
 		});
-	}
-
-	private getAutoScrollVelocity(distance: number): number {
-		return Math.min(14, Math.max(3, distance / 4));
 	}
 
 	private stepAutoScroll(): void {
@@ -1894,17 +2000,12 @@ export class TabController {
 		targetId: string,
 		position: "before" | "after"
 	): boolean {
-		if (sourceId === targetId) return true;
-		const sourceIndex = this.orderedIndexById.get(sourceId);
-		const targetIndex = this.orderedIndexById.get(targetId);
-		if (sourceIndex === undefined || targetIndex === undefined) {
-			return false;
-		}
-		let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
-		if (sourceIndex < insertIndex) {
-			insertIndex -= 1;
-		}
-		return sourceIndex === insertIndex;
+		return isNoopRelativeMove(
+			this.orderedIndexById,
+			sourceId,
+			targetId,
+			position
+		);
 	}
 
 	private isMasonryLayout(): boolean {
@@ -1922,6 +2023,7 @@ export class TabController {
 		row.item = item;
 		if (row.renderedTitle !== item.title) {
 			row.el.title = item.title;
+			row.el.setAttr("aria-label", item.title);
 			this.renderRowTitle(row);
 		}
 		if (row.renderedPath !== item.path) {
@@ -1951,6 +2053,11 @@ export class TabController {
 		}
 		if (row.active !== item.active) {
 			row.el.toggleClass("is-active", item.active);
+			if (item.active) {
+				row.el.setAttr("aria-current", "true");
+			} else {
+				row.el.removeAttribute("aria-current");
+			}
 			row.active = item.active;
 		}
 		if (row.renderedIcon !== item.icon) {
@@ -1966,8 +2073,7 @@ export class TabController {
 		let visibleCount = 0;
 		for (const row of this.rows.values()) {
 			const visible =
-				!hasFilter ||
-				row.item.title.toLocaleLowerCase().includes(this.filterQuery);
+				!hasFilter || matchesTabTitle(row.item.title, this.filterQuery);
 			row.el.toggle(visible);
 			row.el.draggable = allowNativeDrag;
 			row.iconEl.draggable = allowNativeDrag;

@@ -59,6 +59,13 @@ export default class LiteTabsPlugin extends Plugin {
 			},
 		});
 		this.addCommand({
+			id: "focus-search",
+			name: "Focus search",
+			callback: () => {
+				void this.focusSearch();
+			},
+		});
+		this.addCommand({
 			id: "refresh-panel",
 			name: "Refresh panel",
 			callback: () => this.refreshViews(true),
@@ -199,6 +206,11 @@ export default class LiteTabsPlugin extends Plugin {
 		if (!leaf) return;
 		await leaf.setViewState({ type: LITE_TABS_VIEW_TYPE, active: true });
 		if (reveal) this.app.workspace.setActiveLeaf(leaf, { focus: true });
+	}
+
+	async focusSearch(): Promise<void> {
+		await this.openView(true);
+		this.getViews()[0]?.focusSearch();
 	}
 
 	refreshViews(force = false): void {

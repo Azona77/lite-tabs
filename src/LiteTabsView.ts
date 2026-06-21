@@ -47,4 +47,8 @@ export class LiteTabsView extends ItemView {
 	syncActive(): void {
 		this.controller?.syncActive();
 	}
+
+	focusSearch(): void {
+		this.controller?.focusSearch();
+	}
 }
