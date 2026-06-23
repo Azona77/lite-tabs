@@ -763,8 +763,11 @@ export class TabController {
 		const input = this.toolbarEl.createEl("input", {
 			cls: "lite-tabs-search",
 			attr: {
-				"aria-label": "Search tabs",
-				placeholder: "Search tabs",
+				"aria-keyshortcuts": "ArrowUp ArrowDown Enter Escape",
+				"aria-label":
+					"Search tabs. Use arrow keys to select a result, Enter to open, and Escape to clear.",
+				placeholder: "Search tabs · ↑↓",
+				title: "Search tabs. ↑/↓ select, Enter open, Esc clear.",
 				type: "search",
 			},
 		});

@@ -163,14 +163,32 @@ body.lite-tabs-hide-toolbar
 button.lite-tabs-layout-button,
 button.lite-tabs-toolbar-button {
     align-items: center;
+    -webkit-appearance: none;
+    appearance: none;
+    aspect-ratio: 1;
     background-color: transparent;
     border: 0;
     border-radius: var(--lite-tabs-control-radius);
     color: var(--text-muted);
+    box-sizing: border-box;
     display: flex;
+    flex: 0 0 26px;
+    flex-shrink: 0;
     height: 26px;
+    inline-size: 26px;
     justify-content: center;
+    line-height: 1;
+    margin: 0;
+    min-block-size: 26px;
+    max-block-size: 26px;
+    min-inline-size: 26px;
+    max-inline-size: 26px;
+    max-height: 26px;
+    max-width: 26px;
+    min-height: 26px;
+    min-width: 26px;
     opacity: 0.35;
+    overflow: visible;
     padding: 0;
     transform: scale(0.82);
     transition:
@@ -180,6 +198,15 @@ button.lite-tabs-toolbar-button {
         transform var(--lite-tabs-motion-normal);
     width: 26px;
     box-shadow: unset;
+}
+
+.lite-tabs-layout-button svg,
+.lite-tabs-toolbar-button svg {
+    display: block;
+    flex: 0 0 auto;
+    height: 16px;
+    stroke: currentColor;
+    width: 16px;
 }
 
 .lite-tabs-search {
@@ -230,6 +257,54 @@ button.lite-tabs-toolbar-button {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
     opacity: 1;
+}
+
+body.is-mobile .lite-tabs-toolbar {
+    height: 34px;
+    opacity: 1;
+    padding: 4px 6px;
+}
+
+body.is-mobile .lite-tabs-layout-button,
+body.is-mobile .lite-tabs-toolbar-button {
+    block-size: 26px !important;
+    flex-basis: 26px !important;
+    height: 26px !important;
+    inline-size: 26px !important;
+    max-block-size: 26px !important;
+    max-height: 26px !important;
+    max-inline-size: 26px !important;
+    max-width: 26px !important;
+    min-block-size: 26px !important;
+    min-height: 26px !important;
+    min-inline-size: 26px !important;
+    min-width: 26px !important;
+    opacity: 0.86;
+    padding: 0 !important;
+    transform: none;
+    width: 26px !important;
+}
+
+body.is-mobile .lite-tabs-layout-button.is-active,
+body.is-mobile .lite-tabs-toolbar-button.is-active {
+    opacity: 1;
+}
+
+body.is-mobile button.lite-tabs-close {
+    block-size: 22px !important;
+    flex-basis: 22px !important;
+    height: 22px !important;
+    inline-size: 22px !important;
+    max-block-size: 22px !important;
+    max-height: 22px !important;
+    max-inline-size: 22px !important;
+    max-width: 22px !important;
+    min-block-size: 22px !important;
+    min-height: 22px !important;
+    min-inline-size: 22px !important;
+    min-width: 22px !important;
+    padding: 0 !important;
+    width: 22px !important;
 }
 
 .lite-tabs-list {
@@ -437,17 +512,35 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
     color: var(--text-accent);
 }
 
-.lite-tabs-close {
+button.lite-tabs-close {
     align-items: center;
+    -webkit-appearance: none;
+    appearance: none;
+    aspect-ratio: 1;
     background: var(--background-primary);
     border: 0;
     border-radius: var(--lite-tabs-control-radius);
     box-shadow: none;
     color: var(--text-muted);
+    box-sizing: border-box;
     display: flex;
+    flex: 0 0 22px;
+    flex-shrink: 0;
     height: 22px;
+    inline-size: 22px;
     justify-content: center;
+    line-height: 1;
+    margin: 0;
+    min-block-size: 22px;
+    max-block-size: 22px;
+    min-inline-size: 22px;
+    max-inline-size: 22px;
+    max-height: 22px;
+    max-width: 22px;
+    min-height: 22px;
+    min-width: 22px;
     opacity: 0;
+    overflow: visible;
     padding: 0;
     pointer-events: none;
     position: absolute;
@@ -462,6 +555,14 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
         transform var(--lite-tabs-motion-normal);
     width: 22px;
     z-index: 2;
+}
+
+.lite-tabs-close svg {
+    display: block;
+    flex: 0 0 auto;
+    height: 14px;
+    stroke: currentColor;
+    width: 14px;
 }
 
 body.lite-tabs-layout-card .lite-tabs-close {
@@ -559,14 +660,14 @@ body.is-mobile.lite-tabs-layout-masonry .lite-tabs-title {
 body.is-mobile .lite-tabs-item.is-active .lite-tabs-close {
     opacity: 0.62;
     pointer-events: auto;
-    transform: translate(0, 0);
+    transform: translate3d(0, -50%, 0);
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-close,
 body.is-mobile.lite-tabs-layout-masonry .lite-tabs-close {
     opacity: 0.5;
     pointer-events: auto;
-    transform: translate(0, 0);
+    transform: translate3d(0, 0, 0);
 }
 
 body.is-mobile.lite-tabs-layout-card .lite-tabs-item.is-active .lite-tabs-close,

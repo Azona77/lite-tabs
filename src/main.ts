@@ -59,6 +59,13 @@ export default class LiteTabsPlugin extends Plugin {
 			},
 		});
 		this.addCommand({
+			id: "open-main-tab",
+			name: "Open in main workspace tab",
+			callback: () => {
+				void this.openView(true, "main");
+			},
+		});
+		this.addCommand({
 			id: "focus-search",
 			name: "Focus search",
 			callback: () => {
@@ -198,11 +205,19 @@ export default class LiteTabsPlugin extends Plugin {
 		}
 	}
 
-	async openView(reveal = true): Promise<void> {
-		const existing = this.app.workspace.getLeavesOfType(
-			LITE_TABS_VIEW_TYPE
-		)[0];
-		const leaf = existing ?? this.app.workspace.getLeftLeaf(false);
+	async openView(
+		reveal = true,
+		placement: "auto" | "sidebar" | "main" = "auto"
+	): Promise<void> {
+		const resolvedPlacement =
+			placement === "auto"
+				? this.isMobile()
+					? "main"
+					: "sidebar"
+				: placement;
+		const leaf =
+			this.getExistingViewLeaf(resolvedPlacement) ??
+			this.createViewLeaf(resolvedPlacement);
 		if (!leaf) return;
 		await leaf.setViewState({ type: LITE_TABS_VIEW_TYPE, active: true });
 		if (reveal) this.app.workspace.setActiveLeaf(leaf, { focus: true });
@@ -238,5 +253,32 @@ export default class LiteTabsPlugin extends Plugin {
 
 	private get body(): HTMLElement {
 		return activeDocument.body;
+	}
+
+	private isMobile(): boolean {
+		return this.body.hasClass("is-mobile");
+	}
+
+	private getExistingViewLeaf(
+		placement: "sidebar" | "main"
+	): WorkspaceLeaf | null {
+		const leaves = this.app.workspace.getLeavesOfType(LITE_TABS_VIEW_TYPE);
+		if (placement === "main") {
+			return (
+				leaves.find((leaf) => leaf.getRoot() === this.app.workspace.rootSplit) ??
+				null
+			);
+		}
+		return (
+			leaves.find((leaf) => leaf.getRoot() !== this.app.workspace.rootSplit) ??
+			null
+		);
+	}
+
+	private createViewLeaf(placement: "sidebar" | "main"): WorkspaceLeaf | null {
+		if (placement === "main") {
+			return this.app.workspace.getLeaf("tab");
+		}
+		return this.app.workspace.getLeftLeaf(false);
 	}
 }

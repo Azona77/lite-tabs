@@ -87,6 +87,7 @@ The production build outputs `main.js` to the repository root.
 ## Commands
 
 * `Open`: Open the Lite Tabs panel.
+* `Open in main workspace tab`: Open Lite Tabs as a regular main workspace tab. On mobile, automatic opening also uses the main workspace.
 * `Focus search`: Open the panel and focus its tab search field.
 * `Refresh panel`: Rebuild the panel based on the current workspace state.
 
