@@ -37,6 +37,14 @@ export function getRelativeInsertIndex(
 	return sameParent && sourceIndex === insertIndex ? null : insertIndex;
 }
 
+export function getRelativeDropPosition(
+	start: number,
+	size: number,
+	coordinate: number
+): RelativePosition {
+	return coordinate > start + size / 2 ? "after" : "before";
+}
+
 export function normalizeAdjacentDropTarget(
 	id: string,
 	position: RelativePosition,
@@ -63,6 +71,17 @@ export function isNoopRelativeMove(
 	let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
 	if (sourceIndex < insertIndex) insertIndex -= 1;
 	return sourceIndex === insertIndex;
+}
+
+export function getCommittedDropMove(
+	indexById: ReadonlyMap<string, number>,
+	sourceId: string | null,
+	targetId: string | null,
+	position: RelativePosition
+): { sourceId: string; targetId: string; position: RelativePosition } | null {
+	if (!sourceId || !targetId) return null;
+	if (isNoopRelativeMove(indexById, sourceId, targetId, position)) return null;
+	return { sourceId, targetId, position };
 }
 
 export function matchesTabTitle(title: string, query: string): boolean {

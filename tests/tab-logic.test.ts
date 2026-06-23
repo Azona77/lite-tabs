@@ -4,6 +4,8 @@ import {
 	createStructureSignature,
 	getAdjacentVisibleId,
 	getAutoScrollVelocity,
+	getCommittedDropMove,
+	getRelativeDropPosition,
 	getRelativeInsertIndex,
 	isNoopRelativeMove,
 	matchesTabTitle,
@@ -34,6 +36,13 @@ test("relative insert indexes account for removal from the same group", () => {
 	assert.equal(getRelativeInsertIndex(0, 1, "before", false), 1);
 });
 
+test("drop positions are derived from the active axis coordinates", () => {
+	assert.equal(getRelativeDropPosition(10, 20, 19), "before");
+	assert.equal(getRelativeDropPosition(10, 20, 21), "after");
+	assert.equal(getRelativeDropPosition(100, 40, 119), "before");
+	assert.equal(getRelativeDropPosition(100, 40, 121), "after");
+});
+
 test("after targets normalize to the next item in the same group", () => {
 	assert.deepEqual(
 		normalizeAdjacentDropTarget("a", "after", "b", "one", "one"),
@@ -54,6 +63,13 @@ test("no-op move detection handles adjacent and missing tabs", () => {
 	assert.equal(isNoopRelativeMove(indexes, "b", "a", "after"), true);
 	assert.equal(isNoopRelativeMove(indexes, "a", "c", "after"), false);
 	assert.equal(isNoopRelativeMove(indexes, "missing", "a", "before"), false);
+	assert.deepEqual(getCommittedDropMove(indexes, "a", "c", "after"), {
+		sourceId: "a",
+		targetId: "c",
+		position: "after",
+	});
+	assert.equal(getCommittedDropMove(indexes, "a", "b", "before"), null);
+	assert.equal(getCommittedDropMove(indexes, null, "b", "before"), null);
 });
 
 test("title matching and keyboard navigation skip hidden rows", () => {

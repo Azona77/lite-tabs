@@ -14,11 +14,15 @@ import {
 	createStructureSignature,
 	getAdjacentVisibleId,
 	getAutoScrollVelocity,
+	getCommittedDropMove,
+	getRelativeDropPosition,
 	isNoopRelativeMove,
 	matchesTabTitle,
 	normalizeAdjacentDropTarget,
+	type RelativePosition,
 } from "./tab-logic";
 
+let controllerInstanceId = 0;
 
 interface RowRecord {
 	item: TabItem;
@@ -66,7 +70,7 @@ interface DragGeometry {
 
 interface MasonryDropSlot {
 	id: string;
-	position: "before" | "after";
+	position: RelativePosition;
 	left: number;
 	top: number;
 	width: number;
@@ -104,13 +108,14 @@ export class TabController {
 	private structureSignature: string | null = null;
 	private frame: number | null = null;
 	private activeId: string | null = null;
+	private searchTargetId: string | null = null;
 	private draggedId: string | null = null;
 	private dragSourceEl: HTMLElement | null = null;
 	private dragOverId: string | null = null;
 	private dragOverZoneEl: HTMLElement | null = null;
 	private lastGroupEndId: string | null = null;
 	private groupSeparators: { endId: string; el: HTMLElement }[] = [];
-	private dropPosition: "before" | "after" = "before";
+	private dropPosition: RelativePosition = "before";
 	private indicatorKey: string | null = null;
 	private indicatorTargetKey: string | null = null;
 	private dragGeometry: DragGeometry | null = null;
@@ -126,6 +131,7 @@ export class TabController {
 	private overflowFrame: number | null = null;
 	private renderedLayoutStyle: LiteTabsLayoutStyle | null = null;
 	private bottomSpacerHeight = 0;
+	private readonly instanceId = ++controllerInstanceId;
 
 	constructor(plugin: LiteTabsPlugin, containerEl: HTMLElement) {
 		this.plugin = plugin;
@@ -151,8 +157,10 @@ export class TabController {
 		this.refreshButtonEl = this.createRefreshButton();
 		this.searchInputEl = this.createSearchInput();
 		this.listEl = this.rootEl.createDiv({ cls: "lite-tabs-list" });
+		this.listEl.id = `lite-tabs-list-${this.instanceId}`;
 		this.listEl.setAttr("role", "list");
 		this.listEl.setAttr("aria-label", "Open tabs");
+		this.searchInputEl.setAttr("aria-controls", this.listEl.id);
 		this.listEl.addEventListener("dragover", (event) => {
 			this.handleListDragOver(event);
 		});
@@ -247,6 +255,7 @@ export class TabController {
 		this.rootEl.addClass("is-search-revealed");
 		this.searchInputEl.focus();
 		this.searchInputEl.select();
+		this.syncSearchTarget();
 	}
 
 	refreshStructure(force = false): void {
@@ -327,6 +336,7 @@ export class TabController {
 		this.syncIconButton();
 		this.syncInactiveTabsButton();
 		this.applyFilter();
+		this.syncSearchTarget();
 		this.flushMasonryLayout();
 		this.restoreScrollTop(previousScrollTop);
 		this.scheduleListOverflowCheck();
@@ -369,8 +379,14 @@ export class TabController {
 		return `${this.plugin.settings.layoutStyle}:${this.getCardColumnCount()}`;
 	}
 
+	private getRowDomId(id: string): string {
+		const safeId = encodeURIComponent(id);
+		return `lite-tabs-${this.instanceId}-${safeId}`;
+	}
+
 	private createRow(item: TabItem): RowRecord {
 		const el = createDiv({ cls: "lite-tabs-item" });
+		el.id = this.getRowDomId(item.id);
 		el.dataset.leafId = item.id;
 		el.setAttr("role", "listitem");
 		el.setAttr("tabindex", "0");
@@ -609,18 +625,10 @@ export class TabController {
 		const sourceId = this.draggedId ?? state.id;
 		const targetId = this.dragOverId;
 		const position = this.dropPosition;
-		const shouldMove =
-			!!targetId && !this.isNoopMove(sourceId, targetId, position);
+		const move = this.getCommittedDropMove(sourceId, targetId, position);
 		this.pointerDragState = null;
 		this.clearAllDragState();
-		if (
-			shouldMove &&
-			targetId &&
-			moveLeafRelative(this.plugin.app, sourceId, targetId, position)
-		) {
-			this.pendingMovedId = sourceId;
-			this.scheduleRefresh();
-		}
+		this.commitDropMove(move);
 	}
 
 	private cancelPointerDrag(event: PointerEvent): void {
@@ -765,13 +773,13 @@ export class TabController {
 			this.syncSearchReveal();
 			this.clearAllDragState();
 			this.applyFilter();
+			this.syncSearchTarget();
 			this.scheduleMasonryLayout();
 		});
 		input.addEventListener("keydown", (event) => {
 			if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 				event.preventDefault();
-				this.focusAdjacentVisibleTab(
-					null,
+				this.moveSearchTarget(
 					event.key === "ArrowDown" ? 1 : -1
 				);
 				return;
@@ -779,12 +787,13 @@ export class TabController {
 			if (event.key === "Enter") {
 				event.preventDefault();
 				event.stopPropagation();
-				this.activateFirstVisibleTab();
+				this.activateSearchTarget();
 				return;
 			}
 			if (event.key !== "Escape") return;
 			event.stopPropagation();
 			if (!input.value) {
+				this.clearSearchTarget();
 				input.blur();
 				return;
 			}
@@ -792,9 +801,17 @@ export class TabController {
 			this.filterQuery = "";
 			this.syncSearchReveal();
 			this.applyFilter();
+			this.clearSearchTarget();
 			this.scheduleMasonryLayout();
 		});
-		input.addEventListener("blur", () => this.syncSearchReveal());
+		input.addEventListener("focus", () => {
+			this.syncSearchReveal();
+			this.syncSearchTarget();
+		});
+		input.addEventListener("blur", () => {
+			this.syncSearchReveal();
+			if (!this.isFilterActive()) this.clearSearchTarget();
+		});
 		return input;
 	}
 
@@ -803,6 +820,84 @@ export class TabController {
 			this.filterQuery.length > 0 ||
 			this.searchInputEl.ownerDocument.activeElement === this.searchInputEl;
 		this.rootEl.toggleClass("is-search-revealed", shouldReveal);
+	}
+
+	private moveSearchTarget(direction: -1 | 1): void {
+		const currentId = this.isSearchTargetVisible()
+			? this.searchTargetId
+			: null;
+		const id = getAdjacentVisibleId(
+			this.orderedIds,
+			currentId,
+			direction,
+			(candidateId) => this.rows.get(candidateId)?.el.isShown() ?? false
+		);
+		if (id) this.setSearchTarget(id, true);
+	}
+
+	private syncSearchTarget(): void {
+		if (!this.isFilterActive() && !this.isSearchFocused()) {
+			this.clearSearchTarget();
+			return;
+		}
+		if (this.isSearchTargetVisible()) return;
+		const id = getAdjacentVisibleId(
+			this.orderedIds,
+			null,
+			1,
+			(candidateId) => this.rows.get(candidateId)?.el.isShown() ?? false
+		);
+		if (id) {
+			this.setSearchTarget(id, false);
+		} else {
+			this.clearSearchTarget();
+		}
+	}
+
+	private setSearchTarget(id: string, scrollIntoView: boolean): void {
+		if (this.searchTargetId === id) {
+			if (scrollIntoView) {
+				this.rows.get(id)?.el.scrollIntoView({ block: "nearest" });
+			}
+			return;
+		}
+		if (this.searchTargetId) {
+			this.rows
+				.get(this.searchTargetId)
+				?.el.removeClass("is-search-target");
+		}
+		this.searchTargetId = id;
+		const row = this.rows.get(id);
+		if (!row) {
+			this.clearSearchTarget();
+			return;
+		}
+		row.el.addClass("is-search-target");
+		this.searchInputEl.setAttr("aria-activedescendant", row.el.id);
+		if (scrollIntoView) row.el.scrollIntoView({ block: "nearest" });
+	}
+
+	private clearSearchTarget(): void {
+		if (this.searchTargetId) {
+			this.rows
+				.get(this.searchTargetId)
+				?.el.removeClass("is-search-target");
+		}
+		this.searchTargetId = null;
+		this.searchInputEl.removeAttribute("aria-activedescendant");
+	}
+
+	private isSearchTargetVisible(): boolean {
+		return !!(
+			this.searchTargetId &&
+			this.rows.get(this.searchTargetId)?.el.isShown()
+		);
+	}
+
+	private isSearchFocused(): boolean {
+		return (
+			this.searchInputEl.ownerDocument.activeElement === this.searchInputEl
+		);
 	}
 
 	private createGroupSeparator(): HTMLElement {
@@ -839,12 +934,8 @@ export class TabController {
 	): void {
 		const rect = el.getBoundingClientRect();
 		const rawPosition = this.isGridLikeLayout()
-			? x > rect.left + rect.width / 2
-				? "after"
-				: "before"
-			: y > rect.top + rect.height / 2
-				? "after"
-				: "before";
+			? getRelativeDropPosition(rect.left, rect.width, x)
+			: getRelativeDropPosition(rect.top, rect.height, y);
 		const target = this.normalizeDropTarget(id, rawPosition);
 		const targetRow = this.rows.get(target.id);
 		if (!targetRow) return;
@@ -1170,30 +1261,17 @@ export class TabController {
 			event.dataTransfer?.getData("text/plain") || this.draggedId;
 		const targetId = this.dragOverId ?? slot.id;
 		const position = this.dropPosition;
-		const shouldMove =
-			!!sourceId && !this.isNoopMove(sourceId, targetId, position);
+		const move = this.getCommittedDropMove(sourceId, targetId, position);
 		this.clearAllDragState();
-		if (
-			shouldMove &&
-			sourceId &&
-			moveLeafRelative(this.plugin.app, sourceId, targetId, position)
-		) {
-			this.pendingMovedId = sourceId;
-			this.scheduleRefresh();
-		}
+		this.commitDropMove(move);
 	}
 
 	private dropAfterGroupEnd(targetId: string, event: DragEvent): void {
 		const sourceId =
 			event.dataTransfer?.getData("text/plain") || this.draggedId;
+		const move = this.getCommittedDropMove(sourceId, targetId, "after");
 		this.clearAllDragState();
-		if (
-			sourceId &&
-			moveLeafRelative(this.plugin.app, sourceId, targetId, "after")
-		) {
-			this.pendingMovedId = sourceId;
-			this.scheduleRefresh();
-		}
+		this.commitDropMove(move);
 	}
 
 	private dropOnRow(id: string, el: HTMLElement, event: DragEvent): void {
@@ -1202,12 +1280,41 @@ export class TabController {
 			event.dataTransfer?.getData("text/plain") || this.draggedId;
 		const position = this.dropPosition;
 		const targetId = this.dragOverId ?? id;
+		const move = this.getCommittedDropMove(sourceId, targetId, position);
 		this.clearAllDragState();
+		this.commitDropMove(move);
+	}
+
+	private getCommittedDropMove(
+		sourceId: string | null,
+		targetId: string | null,
+		position: RelativePosition
+	): { sourceId: string; targetId: string; position: RelativePosition } | null {
+		return getCommittedDropMove(
+			this.orderedIndexById,
+			sourceId,
+			targetId,
+			position
+		);
+	}
+
+	private commitDropMove(
+		move: {
+			sourceId: string;
+			targetId: string;
+			position: RelativePosition;
+		} | null
+	): void {
+		if (!move) return;
 		if (
-			sourceId &&
-			moveLeafRelative(this.plugin.app, sourceId, targetId, position)
+			moveLeafRelative(
+				this.plugin.app,
+				move.sourceId,
+				move.targetId,
+				move.position
+			)
 		) {
-			this.pendingMovedId = sourceId;
+			this.pendingMovedId = move.sourceId;
 			this.scheduleRefresh();
 		}
 	}
@@ -2142,13 +2249,20 @@ export class TabController {
 		}
 	}
 
-	private activateFirstVisibleTab(): void {
+	private activateSearchTarget(): void {
+		const targetRow =
+			this.searchTargetId && this.rows.get(this.searchTargetId)?.el.isShown()
+				? this.rows.get(this.searchTargetId)
+				: this.getFirstVisibleRow();
+		if (targetRow) this.activateLeaf(targetRow.item.leaf);
+	}
+
+	private getFirstVisibleRow(): RowRecord | null {
 		for (const id of this.orderedIds) {
 			const row = this.rows.get(id);
-			if (!row || !row.el.isShown()) continue;
-			this.activateLeaf(row.item.leaf);
-			return;
+			if (row?.el.isShown()) return row;
 		}
+		return null;
 	}
 
 	private syncGroupLayoutState(): void {

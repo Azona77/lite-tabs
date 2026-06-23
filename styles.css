@@ -38,7 +38,7 @@ body.lite-tabs-layout-masonry .lite-tabs-list.has-groups {
 body.lite-tabs-layout-card .lite-tabs-item {
     align-items: start;
     border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
+    border-radius: calc(var(--lite-tabs-item-radius) + 2px);
     grid-template-columns: 20px minmax(0, 1fr);
     box-sizing: border-box;
     height: var(--lite-tabs-card-height, 56px);
@@ -50,7 +50,7 @@ body.lite-tabs-layout-masonry .lite-tabs-item {
     align-items: start;
     align-self: start;
     border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
+    border-radius: calc(var(--lite-tabs-item-radius) + 2px);
     box-sizing: border-box;
     grid-row-end: span var(--lite-tabs-masonry-span, 10);
     grid-template-columns: 20px minmax(0, 1fr);
@@ -103,6 +103,21 @@ body.is-mobile.lite-tabs-hide-icons .lite-tabs-item {
 }
 
 .lite-tabs-root {
+    --lite-tabs-accent-weak: color-mix(
+        in srgb,
+        var(--interactive-accent) 12%,
+        transparent
+    );
+    --lite-tabs-accent-medium: color-mix(
+        in srgb,
+        var(--interactive-accent) 20%,
+        transparent
+    );
+    --lite-tabs-control-radius: 4px;
+    --lite-tabs-focus-ring: 2px solid var(--interactive-accent);
+    --lite-tabs-item-radius: 6px;
+    --lite-tabs-motion-fast: 120ms ease;
+    --lite-tabs-motion-normal: 180ms cubic-bezier(0.2, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -150,7 +165,7 @@ button.lite-tabs-toolbar-button {
     align-items: center;
     background-color: transparent;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--lite-tabs-control-radius);
     color: var(--text-muted);
     display: flex;
     height: 26px;
@@ -159,10 +174,10 @@ button.lite-tabs-toolbar-button {
     padding: 0;
     transform: scale(0.82);
     transition:
-        background-color 0.3s ease,
-        color 0.3s ease,
-        opacity 0.3s ease,
-        transform 0.3s ease;
+        background-color var(--lite-tabs-motion-normal),
+        color var(--lite-tabs-motion-normal),
+        opacity var(--lite-tabs-motion-normal),
+        transform var(--lite-tabs-motion-normal);
     width: 26px;
     box-shadow: unset;
 }
@@ -170,13 +185,20 @@ button.lite-tabs-toolbar-button {
 .lite-tabs-search {
     background: var(--background-modifier-form-field);
     border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
+    border-radius: var(--lite-tabs-control-radius);
     color: var(--text-normal);
     flex: 1 1 90px;
     font-size: var(--font-ui-smaller);
     height: 24px;
     min-width: 48px;
     padding: 0 6px;
+}
+
+.lite-tabs-search:focus-visible,
+.lite-tabs-layout-button:focus-visible,
+.lite-tabs-toolbar-button:focus-visible {
+    outline: var(--lite-tabs-focus-ring);
+    outline-offset: 1px;
 }
 
 .lite-tabs-search::placeholder {
@@ -255,7 +277,7 @@ body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
 
 .lite-tabs-item {
     align-items: center;
-    border-radius: 6px;
+    border-radius: var(--lite-tabs-item-radius);
     color: var(--text-normal);
     cursor: default;
     display: grid;
@@ -274,8 +296,17 @@ body.lite-tabs-layout-masonry .lite-tabs-bottom-spacer {
 
 .lite-tabs-item:focus-visible {
     background: var(--background-modifier-hover);
-    outline: 2px solid var(--interactive-accent);
+    outline: var(--lite-tabs-focus-ring);
     outline-offset: -2px;
+}
+
+.lite-tabs-item.is-search-target {
+    background: var(--lite-tabs-accent-weak);
+    box-shadow: inset 0 0 0 1px var(--interactive-accent);
+}
+
+.lite-tabs-item.is-search-target.is-active {
+    background: var(--lite-tabs-accent-medium);
 }
 
 .lite-tabs-item.is-active {
@@ -410,7 +441,7 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
     align-items: center;
     background: var(--background-primary);
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--lite-tabs-control-radius);
     box-shadow: none;
     color: var(--text-muted);
     display: flex;
@@ -425,10 +456,10 @@ body.lite-tabs-active-border .lite-tabs-item.is-active {
     transform: translateY(-50%);
     transform-origin: center;
     transition:
-        background-color 120ms ease,
-        color 120ms ease,
-        opacity 140ms ease,
-        transform 140ms cubic-bezier(0.2, 0, 0.2, 1);
+        background-color var(--lite-tabs-motion-fast),
+        color var(--lite-tabs-motion-fast),
+        opacity var(--lite-tabs-motion-normal),
+        transform var(--lite-tabs-motion-normal);
     width: 22px;
     z-index: 2;
 }
@@ -563,7 +594,8 @@ body.is-mobile .lite-tabs-root.is-dragging .lite-tabs-drag-handle {
     transform: translate3d(0, -50%, 0);
 }
 
-body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close, body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close {
+body.lite-tabs-layout-card .lite-tabs-item:hover .lite-tabs-close,
+body.lite-tabs-layout-masonry .lite-tabs-item:hover .lite-tabs-close {
     transform: translate3d(0, 0, 0);
 }
 
@@ -583,11 +615,26 @@ body.lite-tabs-layout-masonry .lite-tabs-item:focus-within .lite-tabs-close {
 }
 
 .lite-tabs-close:focus-visible {
-    outline: 2px solid var(--interactive-accent);
+    outline: var(--lite-tabs-focus-ring);
     outline-offset: 1px;
 }
 
 .lite-tabs-item.is-pinned .lite-tabs-close:hover {
     background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
     color: var(--interactive-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lite-tabs-toolbar,
+    button.lite-tabs-layout-button,
+    button.lite-tabs-toolbar-button,
+    .lite-tabs-close {
+        transition: none;
+    }
+
+    .lite-tabs-item.is-drop-result {
+        animation: none;
+        outline: var(--lite-tabs-focus-ring);
+        outline-offset: 2px;
+    }
 }
