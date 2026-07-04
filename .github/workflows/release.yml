@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag to rebuild and attest"
         required: true
-        default: "1.3.9"
+        default: "1.4.0"
 
 permissions:
   contents: write
@@ -73,10 +73,19 @@ jobs:
         shell: bash
         run: |
           cat > release-notes.md <<'EOF'
-          ## Lite Tabs 1.3.9
+          ## Lite Tabs 1.4.0
 
-          - Removed an unnecessary workspace runtime type assertion.
-          - Removed mobile close-button `!important` overrides by relying on the shared button sizing rules.
+          ### English
+
+          - Refined the toolbar into prominent Layout and Display order controls with a quieter More menu.
+          - Added reverse display ordering with a low-friction right-click shortcut and menu/settings toggle.
+          - Added a List gap setting and improved the active-tab accent border.
+
+          ### 中文
+
+          - 优化工具栏排布，突出 Layout 与 Display order，并将低频操作收纳到 More 菜单。
+          - 添加逆向排序，可通过排序按钮右键、More 菜单或设置页切换。
+          - 添加 List gap 设置，并优化当前标签的四边高亮边框。
           EOF
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \

@@ -15,6 +15,7 @@ export interface LiteTabsSettings {
 	hideToolbar: boolean;
 	layoutStyle: LiteTabsLayoutStyle;
 	displayOrder: LiteTabsDisplayOrder;
+	displayOrderReversed: boolean;
 	mobileStackBottom: boolean;
 	showMobileDragHandles: boolean;
 	showIcons: boolean;
@@ -22,6 +23,7 @@ export interface LiteTabsSettings {
 	separatorMarginY: number;
 	separatorMarginX: number;
 	listItemHeight: number;
+	listGap: number;
 	listFontSize: number;
 	cardWidth: number;
 	cardHeight: number;
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideToolbar: false,
 	layoutStyle: "list",
 	displayOrder: "workspace",
+	displayOrderReversed: false,
 	mobileStackBottom: true,
 	showMobileDragHandles: true,
 	showIcons: true,
@@ -44,6 +47,7 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	separatorMarginY: 7,
 	separatorMarginX: 8,
 	listItemHeight: 30,
+	listGap: 1,
 	listFontSize: 13,
 	cardWidth: 120,
 	cardHeight: 56,
@@ -61,6 +65,7 @@ const NUMERIC_MINIMUMS: Record<NumericSettingKey, number> = {
 	separatorMarginY: 0,
 	separatorMarginX: 0,
 	listItemHeight: 1,
+	listGap: 0,
 	listFontSize: 1,
 	cardWidth: 1,
 	cardHeight: 1,
@@ -137,6 +142,11 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 		),
 		layoutStyle: readLayoutStyle(source),
 		displayOrder: readDisplayOrder(source),
+		displayOrderReversed: readBoolean(
+			source,
+			"displayOrderReversed",
+			DEFAULT_SETTINGS.displayOrderReversed
+		),
 		mobileStackBottom: readBoolean(
 			source,
 			"mobileStackBottom",
@@ -168,6 +178,7 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 			"listItemHeight",
 			DEFAULT_SETTINGS.listItemHeight
 		),
+		listGap: readNumber(source, "listGap", DEFAULT_SETTINGS.listGap),
 		listFontSize: readNumber(
 			source,
 			"listFontSize",
@@ -258,6 +269,19 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 							value === "name" || value === "modified"
 								? value
 								: "workspace";
+						this.plugin.refreshViews(true);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Reverse display order")
+			.setDesc("Show the selected display order in reverse. Workspace reverse is display-only and disables drag sorting.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.displayOrderReversed)
+					.onChange(async (value) => {
+						this.plugin.settings.displayOrderReversed = value;
 						this.plugin.refreshViews(true);
 						await this.plugin.saveSettings();
 					});
@@ -358,6 +382,15 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 			"listItemHeight",
 			22,
 			56,
+			1
+		);
+		this.addNumberSetting(
+			containerEl,
+			"List gap",
+			"Gap between rows in list view.",
+			"listGap",
+			0,
+			12,
 			1
 		);
 		this.addNumberSetting(

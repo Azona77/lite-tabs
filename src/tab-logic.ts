@@ -33,16 +33,17 @@ export function createStructureSignature(
 
 export function orderTabsByDisplayOrder<T extends DisplayOrderTab>(
 	items: readonly T[],
-	order: DisplayOrder
+	order: DisplayOrder,
+	reversed = false
 ): T[] {
-	if (order === "workspace") return [...items];
+	if (order === "workspace" && !reversed) return [...items];
 
 	const ordered: T[] = [];
 	let group: T[] = [];
 	let groupParentId: string | null = null;
 	const flushGroup = () => {
 		if (group.length === 0) return;
-		ordered.push(...sortTabGroup(group, order));
+		ordered.push(...sortTabGroup(group, order, reversed));
 		group = [];
 	};
 
@@ -59,32 +60,45 @@ export function orderTabsByDisplayOrder<T extends DisplayOrderTab>(
 
 function sortTabGroup<T extends DisplayOrderTab>(
 	items: readonly T[],
-	order: Exclude<DisplayOrder, "workspace">
+	order: DisplayOrder,
+	reversed: boolean
 ): T[] {
+	if (order === "workspace") {
+		return reversed ? [...items].reverse() : [...items];
+	}
 	return items
 		.map((item, index) => ({ item, index }))
 		.sort((a, b) => {
 			const comparison =
 				order === "name"
-					? compareNames(a.item.title, b.item.title)
-					: compareModifiedTimes(a.item.modifiedTime, b.item.modifiedTime);
+					? compareNames(a.item.title, b.item.title, reversed)
+					: compareModifiedTimes(
+							a.item.modifiedTime,
+							b.item.modifiedTime,
+							reversed
+						);
 			return comparison || a.index - b.index;
 		})
 		.map(({ item }) => item);
 }
 
-function compareNames(a: string, b: string): number {
-	return a.localeCompare(b, undefined, {
+function compareNames(a: string, b: string, reversed: boolean): number {
+	const comparison = a.localeCompare(b, undefined, {
 		numeric: true,
 		sensitivity: "base",
 	});
+	return reversed ? -comparison : comparison;
 }
 
-function compareModifiedTimes(a: number | null, b: number | null): number {
+function compareModifiedTimes(
+	a: number | null,
+	b: number | null,
+	reversed: boolean
+): number {
 	if (a === null && b === null) return 0;
 	if (a === null) return 1;
 	if (b === null) return -1;
-	return b - a;
+	return reversed ? a - b : b - a;
 }
 
 export function getRelativeInsertIndex(

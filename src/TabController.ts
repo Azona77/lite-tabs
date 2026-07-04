@@ -92,12 +92,11 @@ export class TabController {
 	private plugin: LiteTabsPlugin;
 	private rootEl: HTMLElement;
 	private toolbarEl: HTMLElement;
+	private primaryToolbarEl: HTMLElement;
 	private layoutButtonEl: HTMLButtonElement;
 	private displayOrderButtonEl: HTMLButtonElement;
-	private iconButtonEl: HTMLButtonElement;
-	private inactiveTabsButtonEl: HTMLButtonElement;
-	private refreshButtonEl: HTMLButtonElement;
 	private searchInputEl: HTMLInputElement;
+	private moreButtonEl: HTMLButtonElement;
 	private listEl: HTMLElement;
 	private bottomSpacerEl: HTMLElement;
 	private dropIndicatorEl: HTMLElement;
@@ -146,12 +145,13 @@ export class TabController {
 			{ passive: false, capture: true }
 		);
 		this.toolbarEl = this.rootEl.createDiv({ cls: "lite-tabs-toolbar" });
+		this.primaryToolbarEl = this.toolbarEl.createDiv({
+			cls: "lite-tabs-primary-controls",
+		});
 		this.layoutButtonEl = this.createLayoutButton();
 		this.displayOrderButtonEl = this.createDisplayOrderButton();
-		this.iconButtonEl = this.createIconButton();
-		this.inactiveTabsButtonEl = this.createInactiveTabsButton();
-		this.refreshButtonEl = this.createRefreshButton();
 		this.searchInputEl = this.createSearchInput();
+		this.moreButtonEl = this.createMoreButton();
 		this.listEl = this.rootEl.createDiv({ cls: "lite-tabs-list" });
 		this.listEl.id = `lite-tabs-list-${this.instanceId}`;
 		this.listEl.setAttr("role", "list");
@@ -185,8 +185,7 @@ export class TabController {
 		this.resizeObserver.observe(this.listEl);
 		this.syncLayoutButton();
 		this.syncDisplayOrderButton();
-		this.syncIconButton();
-		this.syncInactiveTabsButton();
+		this.syncMoreButton();
 	}
 
 	dispose(): void {
@@ -259,7 +258,8 @@ export class TabController {
 		this.invalidateDragGeometry();
 		const items = orderTabsByDisplayOrder(
 			collectTabs(this.plugin.app),
-			this.plugin.settings.displayOrder
+			this.plugin.settings.displayOrder,
+			this.plugin.settings.displayOrderReversed
 		);
 		const nextSignature = this.getStructureSignature(items);
 		if (!force && nextSignature === this.structureSignature) {
@@ -334,8 +334,7 @@ export class TabController {
 		this.syncActive(items);
 		this.syncLayoutButton();
 		this.syncDisplayOrderButton();
-		this.syncIconButton();
-		this.syncInactiveTabsButton();
+		this.syncMoreButton();
 		this.applyFilter();
 		this.syncSearchTarget();
 		this.flushMasonryLayout();
@@ -375,10 +374,13 @@ export class TabController {
 
 	private getLayoutSignature(): string {
 		const orderSignature = this.plugin.settings.displayOrder;
+		const directionSignature = this.plugin.settings.displayOrderReversed
+			? "reversed"
+			: "normal";
 		if (!this.isGridLikeLayout()) {
-			return `list:${orderSignature}`;
+			return `list:${orderSignature}:${directionSignature}`;
 		}
-		return `${this.plugin.settings.layoutStyle}:${this.getCardColumnCount()}:${orderSignature}`;
+		return `${this.plugin.settings.layoutStyle}:${this.getCardColumnCount()}:${orderSignature}:${directionSignature}`;
 	}
 
 	private getRowDomId(id: string): string {
@@ -664,8 +666,8 @@ export class TabController {
 	}
 
 	private createLayoutButton(): HTMLButtonElement {
-		const button = this.toolbarEl.createEl("button", {
-			cls: "lite-tabs-layout-button",
+		const button = this.primaryToolbarEl.createEl("button", {
+			cls: "lite-tabs-layout-button lite-tabs-primary-button",
 			attr: {
 				"aria-label": "Cycle layout",
 				title: "Cycle layout",
@@ -714,21 +716,22 @@ export class TabController {
 	}
 
 	private createDisplayOrderButton(): HTMLButtonElement {
-		const button = this.toolbarEl.createEl("button", {
-			cls: "lite-tabs-toolbar-button",
+		const button = this.primaryToolbarEl.createEl("button", {
+			cls: "lite-tabs-toolbar-button lite-tabs-primary-button lite-tabs-order-button",
 			attr: {
 				"aria-label": "Cycle display order",
 				title: "Cycle display order",
 			},
 		});
 		button.addEventListener("click", () => {
-			this.plugin.settings.displayOrder = this.getNextDisplayOrder(
-				this.plugin.settings.displayOrder
+			this.setDisplayOrder(
+				this.getNextDisplayOrder(this.plugin.settings.displayOrder)
 			);
-			this.clearAllDragState();
-			this.forceRefresh();
-			this.syncDisplayOrderButton();
-			void this.plugin.saveSettings();
+		});
+		button.addEventListener("contextmenu", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			this.toggleDisplayOrderReversed();
 		});
 		return button;
 	}
@@ -743,24 +746,33 @@ export class TabController {
 
 	private syncDisplayOrderButton(): void {
 		const order = this.plugin.settings.displayOrder;
+		const reversed = this.plugin.settings.displayOrderReversed;
 		const nextOrder = this.getNextDisplayOrder(order);
-		const label = `Display order: ${this.getDisplayOrderLabel(order)}. Click to switch to ${this.getDisplayOrderLabel(nextOrder)}.`;
+		const label = `Display order: ${this.getDisplayOrderLabel(order, reversed)}. Click to switch to ${this.getDisplayOrderLabel(nextOrder, reversed)}. Right-click to reverse.`;
 		this.displayOrderButtonEl.setAttr("aria-label", label);
 		this.displayOrderButtonEl.setAttr("title", label);
 		this.displayOrderButtonEl.toggleClass(
 			"is-active",
-			order !== "workspace"
+			order !== "workspace" || reversed
 		);
+		this.displayOrderButtonEl.toggleClass("is-reversed", reversed);
 		this.setToolbarIcon(
 			this.displayOrderButtonEl,
 			this.getDisplayOrderIcon(order)
 		);
 	}
 
-	private getDisplayOrderLabel(order: LiteTabsDisplayOrder): string {
-		if (order === "name") return "Name";
-		if (order === "modified") return "Recently modified";
-		return "Workspace";
+	private getDisplayOrderLabel(
+		order: LiteTabsDisplayOrder,
+		reversed = false
+	): string {
+		if (order === "name") return reversed ? "Name, Z to A" : "Name, A to Z";
+		if (order === "modified") {
+			return reversed
+				? "Modified, oldest first"
+				: "Modified, newest first";
+		}
+		return reversed ? "Workspace, reversed" : "Workspace";
 	}
 
 	private getDisplayOrderIcon(order: LiteTabsDisplayOrder): string {
@@ -769,75 +781,138 @@ export class TabController {
 		return "panel-left";
 	}
 
-	private createIconButton(): HTMLButtonElement {
+	private setDisplayOrder(order: LiteTabsDisplayOrder): void {
+		this.plugin.settings.displayOrder = order;
+		this.clearAllDragState();
+		this.forceRefresh();
+		this.syncDisplayOrderButton();
+		this.syncMoreButton();
+		void this.plugin.saveSettings();
+	}
+
+	private toggleDisplayOrderReversed(): void {
+		this.setDisplayOrderReversed(!this.plugin.settings.displayOrderReversed);
+	}
+
+	private setDisplayOrderReversed(reversed: boolean): void {
+		this.plugin.settings.displayOrderReversed = reversed;
+		this.clearAllDragState();
+		this.forceRefresh();
+		this.syncDisplayOrderButton();
+		this.syncMoreButton();
+		void this.plugin.saveSettings();
+	}
+
+	private createMoreButton(): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
-			cls: "lite-tabs-toolbar-button",
+			cls: "lite-tabs-toolbar-button lite-tabs-more-button",
 			attr: {
-				"aria-label": "Toggle file icons",
-				title: "Toggle file icons",
+				"aria-label": "More Lite Tabs options",
+				title: "More Lite Tabs options",
 			},
 		});
-		button.addEventListener("click", () => {
-			this.plugin.settings.showIcons = !this.plugin.settings.showIcons;
-			this.plugin.applySettings();
-			this.syncIconButton();
-			this.scheduleMasonryLayout();
-			void this.plugin.saveSettings();
+		this.setToolbarIcon(button, "more-horizontal");
+		button.addEventListener("click", (event) => {
+			this.showToolbarMenu(event);
 		});
 		return button;
 	}
 
-	private syncIconButton(): void {
-		const showIcons = this.plugin.settings.showIcons;
-		this.iconButtonEl.toggleClass("is-active", showIcons);
-		this.iconButtonEl.setAttr("aria-pressed", String(showIcons));
-		this.setToolbarIcon(this.iconButtonEl, showIcons ? "file" : "file-x");
+	private syncMoreButton(): void {
+		const hasSecondaryState =
+			this.plugin.settings.displayOrderReversed ||
+			this.plugin.settings.hideNativeTabs ||
+			!this.plugin.settings.showIcons;
+		this.moreButtonEl.toggleClass("is-active", hasSecondaryState);
+		this.moreButtonEl.setAttr("aria-pressed", String(hasSecondaryState));
 	}
 
-	private createInactiveTabsButton(): HTMLButtonElement {
-		const button = this.toolbarEl.createEl("button", {
-			cls: "lite-tabs-toolbar-button",
-			attr: {
-				"aria-label": "Hide inactive tabs",
-				title: "Hide inactive tabs",
-			},
+	private showToolbarMenu(event: MouseEvent): void {
+		const menu = new Menu();
+		this.addLayoutMenuItems(menu);
+		menu.addSeparator();
+		this.addDisplayOrderMenuItems(menu);
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item
+				.setTitle("Show file icons")
+				.setIcon(this.plugin.settings.showIcons ? "file" : "file-x")
+				.setChecked(this.plugin.settings.showIcons)
+				.onClick(() => {
+					this.plugin.settings.showIcons =
+						!this.plugin.settings.showIcons;
+					this.plugin.applySettings();
+					this.syncMoreButton();
+					this.scheduleMasonryLayout();
+					void this.plugin.saveSettings();
+				});
 		});
-		button.addEventListener("click", () => {
-			this.plugin.settings.hideNativeTabs =
-				!this.plugin.settings.hideNativeTabs;
-			this.plugin.applySettings();
-			this.syncInactiveTabsButton();
-			void this.plugin.saveSettings();
+		menu.addItem((item) => {
+			item
+				.setTitle("Hide inactive native tabs")
+				.setIcon(
+					this.plugin.settings.hideNativeTabs ? "eye-off" : "eye"
+				)
+				.setChecked(this.plugin.settings.hideNativeTabs)
+				.onClick(() => {
+					this.plugin.settings.hideNativeTabs =
+						!this.plugin.settings.hideNativeTabs;
+					this.plugin.applySettings();
+					this.syncMoreButton();
+					void this.plugin.saveSettings();
+				});
 		});
-		return button;
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle("Refresh").setIcon("refresh-cw").onClick(() => {
+				this.forceRefresh();
+			});
+		});
+		menu.showAtMouseEvent(event);
 	}
 
-	private syncInactiveTabsButton(): void {
-		const hideInactiveTabs = this.plugin.settings.hideNativeTabs;
-		this.inactiveTabsButtonEl.toggleClass("is-active", hideInactiveTabs);
-		this.inactiveTabsButtonEl.setAttr(
-			"aria-pressed",
-			String(hideInactiveTabs)
-		);
-		this.setToolbarIcon(
-			this.inactiveTabsButtonEl,
-			hideInactiveTabs ? "eye-off" : "eye"
-		);
+	private addLayoutMenuItems(menu: Menu): void {
+		const current = this.plugin.settings.layoutStyle;
+		for (const style of ["list", "card", "masonry"] as const) {
+			menu.addItem((item) => {
+				item
+					.setTitle(this.getLayoutLabel(style))
+					.setIcon(this.getLayoutIcon(style))
+					.setChecked(current === style)
+					.onClick(() => {
+						this.plugin.settings.layoutStyle = style;
+						this.plugin.applySettings();
+						this.forceRefresh();
+						this.syncLayoutButton();
+						void this.plugin.saveSettings();
+					});
+			});
+		}
 	}
 
-	private createRefreshButton(): HTMLButtonElement {
-		const button = this.toolbarEl.createEl("button", {
-			cls: "lite-tabs-toolbar-button",
-			attr: {
-				"aria-label": "Refresh Lite Tabs",
-				title: "Refresh Lite Tabs",
-			},
+	private addDisplayOrderMenuItems(menu: Menu): void {
+		const current = this.plugin.settings.displayOrder;
+		const reversed = this.plugin.settings.displayOrderReversed;
+		for (const order of ["workspace", "name", "modified"] as const) {
+			menu.addItem((item) => {
+				item
+					.setTitle(this.getDisplayOrderLabel(order, reversed))
+					.setIcon(this.getDisplayOrderIcon(order))
+					.setChecked(current === order)
+					.onClick(() => {
+						this.setDisplayOrder(order);
+					});
+			});
+		}
+		menu.addItem((item) => {
+			item
+				.setTitle("Reverse order")
+				.setIcon("arrow-up-down")
+				.setChecked(reversed)
+				.onClick(() => {
+					this.toggleDisplayOrderReversed();
+				});
 		});
-		this.setToolbarIcon(button, "refresh-cw");
-		button.addEventListener("click", () => {
-			this.forceRefresh();
-		});
-		return button;
 	}
 
 	private setToolbarIcon(
@@ -2376,7 +2451,10 @@ export class TabController {
 	}
 
 	private canReorderTabs(): boolean {
-		return this.plugin.settings.displayOrder === "workspace";
+		return (
+			this.plugin.settings.displayOrder === "workspace" &&
+			!this.plugin.settings.displayOrderReversed
+		);
 	}
 
 	private activateLeaf(leaf: WorkspaceLeaf): void {

@@ -180,6 +180,7 @@ export default class LiteTabsPlugin extends Plugin {
 			"--lite-tabs-list-item-height",
 			this.settings.listItemHeight
 		);
+		this.setPixelVariable("--lite-tabs-list-gap", this.settings.listGap);
 		this.setPixelVariable(
 			"--lite-tabs-list-font-size",
 			this.settings.listFontSize
@@ -208,6 +209,7 @@ export default class LiteTabsPlugin extends Plugin {
 			"--lite-tabs-separator-margin-y",
 			"--lite-tabs-separator-margin-x",
 			"--lite-tabs-list-item-height",
+			"--lite-tabs-list-gap",
 			"--lite-tabs-list-font-size",
 			"--lite-tabs-card-width",
 			"--lite-tabs-card-height",

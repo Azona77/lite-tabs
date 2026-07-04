@@ -54,6 +54,19 @@ test("display ordering sorts names inside contiguous groups", () => {
 	);
 });
 
+test("display ordering reverses names inside contiguous groups", () => {
+	const tabs = [
+		{ id: "b", parentId: "one", title: "Beta", modifiedTime: 20 },
+		{ id: "a", parentId: "one", title: "Alpha", modifiedTime: 10 },
+		{ id: "d", parentId: "two", title: "Delta", modifiedTime: 40 },
+		{ id: "c", parentId: "two", title: "Charlie", modifiedTime: 30 },
+	];
+	assert.deepEqual(
+		orderTabsByDisplayOrder(tabs, "name", true).map((tab) => tab.id),
+		["b", "a", "d", "c"]
+	);
+});
+
 test("display ordering sorts modified tabs newest first and keeps non-file tabs stable", () => {
 	const tabs = [
 		{ id: "old", parentId: "one", title: "Old", modifiedTime: 10 },
@@ -64,6 +77,32 @@ test("display ordering sorts modified tabs newest first and keeps non-file tabs 
 	assert.deepEqual(
 		orderTabsByDisplayOrder(tabs, "modified").map((tab) => tab.id),
 		["new", "old", "settings", "graph"]
+	);
+});
+
+test("display ordering reverses modified tabs while keeping non-file tabs last", () => {
+	const tabs = [
+		{ id: "old", parentId: "one", title: "Old", modifiedTime: 10 },
+		{ id: "settings", parentId: "one", title: "Settings", modifiedTime: null },
+		{ id: "new", parentId: "one", title: "New", modifiedTime: 30 },
+		{ id: "graph", parentId: "one", title: "Graph", modifiedTime: null },
+	];
+	assert.deepEqual(
+		orderTabsByDisplayOrder(tabs, "modified", true).map((tab) => tab.id),
+		["old", "new", "settings", "graph"]
+	);
+});
+
+test("display ordering reverses workspace order inside contiguous groups", () => {
+	const tabs = [
+		{ id: "a", parentId: "one", title: "Alpha", modifiedTime: 10 },
+		{ id: "b", parentId: "one", title: "Beta", modifiedTime: 20 },
+		{ id: "c", parentId: "two", title: "Charlie", modifiedTime: 30 },
+		{ id: "d", parentId: "two", title: "Delta", modifiedTime: 40 },
+	];
+	assert.deepEqual(
+		orderTabsByDisplayOrder(tabs, "workspace", true).map((tab) => tab.id),
+		["b", "a", "d", "c"]
 	);
 });
 
