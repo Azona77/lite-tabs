@@ -10,6 +10,7 @@ import {
 	isNoopRelativeMove,
 	matchesTabTitle,
 	normalizeAdjacentDropTarget,
+	orderTabsByDisplayOrder,
 } from "../src/tab-logic";
 
 test("structure signatures track rendered tab fields", () => {
@@ -27,6 +28,43 @@ test("structure signatures track rendered tab fields", () => {
 		createStructureSignature("list", [{ ...base[0], pinned: true }])
 	);
 	assert.notEqual(createStructureSignature("list", base), createStructureSignature("card:2", base));
+});
+
+test("display ordering keeps workspace order by default", () => {
+	const tabs = [
+		{ id: "b", parentId: "one", title: "Beta", modifiedTime: 20 },
+		{ id: "a", parentId: "one", title: "Alpha", modifiedTime: 10 },
+	];
+	assert.deepEqual(
+		orderTabsByDisplayOrder(tabs, "workspace").map((tab) => tab.id),
+		["b", "a"]
+	);
+});
+
+test("display ordering sorts names inside contiguous groups", () => {
+	const tabs = [
+		{ id: "b", parentId: "one", title: "Beta", modifiedTime: 20 },
+		{ id: "a", parentId: "one", title: "Alpha", modifiedTime: 10 },
+		{ id: "d", parentId: "two", title: "Delta", modifiedTime: 40 },
+		{ id: "c", parentId: "two", title: "Charlie", modifiedTime: 30 },
+	];
+	assert.deepEqual(
+		orderTabsByDisplayOrder(tabs, "name").map((tab) => tab.id),
+		["a", "b", "c", "d"]
+	);
+});
+
+test("display ordering sorts modified tabs newest first and keeps non-file tabs stable", () => {
+	const tabs = [
+		{ id: "old", parentId: "one", title: "Old", modifiedTime: 10 },
+		{ id: "settings", parentId: "one", title: "Settings", modifiedTime: null },
+		{ id: "new", parentId: "one", title: "New", modifiedTime: 30 },
+		{ id: "graph", parentId: "one", title: "Graph", modifiedTime: null },
+	];
+	assert.deepEqual(
+		orderTabsByDisplayOrder(tabs, "modified").map((tab) => tab.id),
+		["new", "old", "settings", "graph"]
+	);
 });
 
 test("relative insert indexes account for removal from the same group", () => {

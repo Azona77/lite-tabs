@@ -6,7 +6,7 @@ import {
 	LiteTabsSettings,
 	normalizeSettings,
 } from "./settings";
-import { LITE_TABS_VIEW_TYPE } from "./tabs";
+import { LITE_TABS_VIEW_TYPE, collectTabs } from "./tabs";
 
 const LITE_TABS_ICON = `
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -48,6 +48,13 @@ export default class LiteTabsPlugin extends Plugin {
 		this.registerEvent(
 			this.app.vault.on("rename", () => {
 				this.refreshViews();
+			})
+		);
+		this.registerEvent(
+			this.app.vault.on("modify", (file) => {
+				if (this.shouldRefreshForModifiedFile(file.path)) {
+					this.refreshViews();
+				}
 			})
 		);
 
@@ -242,6 +249,11 @@ export default class LiteTabsPlugin extends Plugin {
 		for (const view of this.getViews()) {
 			view.syncActive();
 		}
+	}
+
+	private shouldRefreshForModifiedFile(path: string): boolean {
+		if (this.settings.displayOrder !== "modified") return false;
+		return collectTabs(this.app).some((item) => item.path === path);
 	}
 
 	private getViews(): LiteTabsView[] {

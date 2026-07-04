@@ -1,4 +1,5 @@
 export type RelativePosition = "before" | "after";
+export type DisplayOrder = "workspace" | "name" | "modified";
 
 export interface OrderedTab {
 	id: string;
@@ -9,7 +10,13 @@ export interface StructureTab extends OrderedTab {
 	title: string;
 	icon: string;
 	path: string | null;
+	modifiedTime?: number | null;
 	pinned: boolean;
+}
+
+export interface DisplayOrderTab extends OrderedTab {
+	title: string;
+	modifiedTime: number | null;
 }
 
 export function createStructureSignature(
@@ -22,6 +29,62 @@ export function createStructureSignature(
 				`${item.id}\u001f${item.parentId}\u001f${item.title}\u001f${item.icon}\u001f${item.path ?? ""}\u001f${item.pinned}`
 		)
 		.join("\u001e")}`;
+}
+
+export function orderTabsByDisplayOrder<T extends DisplayOrderTab>(
+	items: readonly T[],
+	order: DisplayOrder
+): T[] {
+	if (order === "workspace") return [...items];
+
+	const ordered: T[] = [];
+	let group: T[] = [];
+	let groupParentId: string | null = null;
+	const flushGroup = () => {
+		if (group.length === 0) return;
+		ordered.push(...sortTabGroup(group, order));
+		group = [];
+	};
+
+	for (const item of items) {
+		if (groupParentId !== null && item.parentId !== groupParentId) {
+			flushGroup();
+		}
+		groupParentId = item.parentId;
+		group.push(item);
+	}
+	flushGroup();
+	return ordered;
+}
+
+function sortTabGroup<T extends DisplayOrderTab>(
+	items: readonly T[],
+	order: Exclude<DisplayOrder, "workspace">
+): T[] {
+	return items
+		.map((item, index) => ({ item, index }))
+		.sort((a, b) => {
+			const comparison =
+				order === "name"
+					? compareNames(a.item.title, b.item.title)
+					: compareModifiedTimes(a.item.modifiedTime, b.item.modifiedTime);
+			return comparison || a.index - b.index;
+		})
+		.map(({ item }) => item);
+}
+
+function compareNames(a: string, b: string): number {
+	return a.localeCompare(b, undefined, {
+		numeric: true,
+		sensitivity: "base",
+	});
+}
+
+function compareModifiedTimes(a: number | null, b: number | null): number {
+	if (a === null && b === null) return 0;
+	if (a === null) return 1;
+	if (b === null) return -1;
+	return b - a;
 }
 
 export function getRelativeInsertIndex(

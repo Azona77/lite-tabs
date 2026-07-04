@@ -1,6 +1,6 @@
 import { Menu, WorkspaceLeaf, setIcon } from "obsidian";
 import LiteTabsPlugin from "./main";
-import { LiteTabsLayoutStyle } from "./settings";
+import { LiteTabsDisplayOrder, LiteTabsLayoutStyle } from "./settings";
 import {
 	TabItem,
 	closeOtherLeavesInGroup,
@@ -19,6 +19,7 @@ import {
 	isNoopRelativeMove,
 	matchesTabTitle,
 	normalizeAdjacentDropTarget,
+	orderTabsByDisplayOrder,
 	type RelativePosition,
 } from "./tab-logic";
 
@@ -91,9 +92,8 @@ export class TabController {
 	private plugin: LiteTabsPlugin;
 	private rootEl: HTMLElement;
 	private toolbarEl: HTMLElement;
-	private listButtonEl: HTMLButtonElement;
-	private cardButtonEl: HTMLButtonElement;
-	private masonryButtonEl: HTMLButtonElement;
+	private layoutButtonEl: HTMLButtonElement;
+	private displayOrderButtonEl: HTMLButtonElement;
 	private iconButtonEl: HTMLButtonElement;
 	private inactiveTabsButtonEl: HTMLButtonElement;
 	private refreshButtonEl: HTMLButtonElement;
@@ -146,12 +146,8 @@ export class TabController {
 			{ passive: false, capture: true }
 		);
 		this.toolbarEl = this.rootEl.createDiv({ cls: "lite-tabs-toolbar" });
-		this.listButtonEl = this.createLayoutButton("list", "List view");
-		this.cardButtonEl = this.createLayoutButton("card", "Card view");
-		this.masonryButtonEl = this.createLayoutButton(
-			"masonry",
-			"Masonry view"
-		);
+		this.layoutButtonEl = this.createLayoutButton();
+		this.displayOrderButtonEl = this.createDisplayOrderButton();
 		this.iconButtonEl = this.createIconButton();
 		this.inactiveTabsButtonEl = this.createInactiveTabsButton();
 		this.refreshButtonEl = this.createRefreshButton();
@@ -187,7 +183,8 @@ export class TabController {
 			this.scheduleListOverflowCheck();
 		});
 		this.resizeObserver.observe(this.listEl);
-		this.syncLayoutButtons();
+		this.syncLayoutButton();
+		this.syncDisplayOrderButton();
 		this.syncIconButton();
 		this.syncInactiveTabsButton();
 	}
@@ -260,7 +257,10 @@ export class TabController {
 
 	refreshStructure(force = false): void {
 		this.invalidateDragGeometry();
-		const items = collectTabs(this.plugin.app);
+		const items = orderTabsByDisplayOrder(
+			collectTabs(this.plugin.app),
+			this.plugin.settings.displayOrder
+		);
 		const nextSignature = this.getStructureSignature(items);
 		if (!force && nextSignature === this.structureSignature) {
 			this.syncActive();
@@ -332,7 +332,8 @@ export class TabController {
 		);
 		this.structureSignature = nextSignature;
 		this.syncActive(items);
-		this.syncLayoutButtons();
+		this.syncLayoutButton();
+		this.syncDisplayOrderButton();
 		this.syncIconButton();
 		this.syncInactiveTabsButton();
 		this.applyFilter();
@@ -373,10 +374,11 @@ export class TabController {
 	}
 
 	private getLayoutSignature(): string {
+		const orderSignature = this.plugin.settings.displayOrder;
 		if (!this.isGridLikeLayout()) {
-			return "list";
+			return `list:${orderSignature}`;
 		}
-		return `${this.plugin.settings.layoutStyle}:${this.getCardColumnCount()}`;
+		return `${this.plugin.settings.layoutStyle}:${this.getCardColumnCount()}:${orderSignature}`;
 	}
 
 	private getRowDomId(id: string): string {
@@ -423,6 +425,7 @@ export class TabController {
 		});
 		el.addEventListener("pointerdown", (event) => {
 			if (event.button !== 0) return;
+			if (!this.canReorderTabs()) return;
 			this.draggedId = item.id;
 			this.dragSourceEl = el;
 		});
@@ -564,6 +567,10 @@ export class TabController {
 	}
 
 	private startDrag(id: string, el: HTMLElement, event: DragEvent): void {
+		if (!this.canReorderTabs()) {
+			event.preventDefault();
+			return;
+		}
 		this.draggedId = id;
 		this.dragSourceEl = el;
 		this.invalidateDragGeometry();
@@ -581,7 +588,13 @@ export class TabController {
 	): void {
 		if (!this.isMobile()) return;
 		if (!this.plugin.settings.showMobileDragHandles) return;
-		if (event.button !== 0 || this.isFilterActive()) return;
+		if (
+			event.button !== 0 ||
+			this.isFilterActive() ||
+			!this.canReorderTabs()
+		) {
+			return;
+		}
 		event.preventDefault();
 		event.stopPropagation();
 		handleEl.setPointerCapture(event.pointerId);
@@ -650,27 +663,32 @@ export class TabController {
 		event.stopImmediatePropagation();
 	}
 
-	private createLayoutButton(
-		style: LiteTabsLayoutStyle,
-		label: string
-	): HTMLButtonElement {
+	private createLayoutButton(): HTMLButtonElement {
 		const button = this.toolbarEl.createEl("button", {
 			cls: "lite-tabs-layout-button",
 			attr: {
-				"aria-label": label,
-				title: label,
+				"aria-label": "Cycle layout",
+				title: "Cycle layout",
 			},
 		});
-		setIcon(button, this.getLayoutIcon(style));
 		button.addEventListener("click", () => {
-			if (this.plugin.settings.layoutStyle === style) return;
-			this.plugin.settings.layoutStyle = style;
+			this.plugin.settings.layoutStyle = this.getNextLayoutStyle(
+				this.plugin.settings.layoutStyle
+			);
 			this.plugin.applySettings();
 			this.forceRefresh();
-			this.syncLayoutButtons();
+			this.syncLayoutButton();
 			void this.plugin.saveSettings();
 		});
 		return button;
+	}
+
+	private getNextLayoutStyle(
+		style: LiteTabsLayoutStyle
+	): LiteTabsLayoutStyle {
+		if (style === "list") return "card";
+		if (style === "card") return "masonry";
+		return "list";
 	}
 
 	private getLayoutIcon(style: LiteTabsLayoutStyle): string {
@@ -679,16 +697,76 @@ export class TabController {
 		return "layout-grid";
 	}
 
-	private syncLayoutButtons(): void {
-		const isList = this.plugin.settings.layoutStyle === "list";
-		const isCard = this.plugin.settings.layoutStyle === "card";
-		const isMasonry = this.plugin.settings.layoutStyle === "masonry";
-		this.listButtonEl.toggleClass("is-active", isList);
-		this.cardButtonEl.toggleClass("is-active", isCard);
-		this.masonryButtonEl.toggleClass("is-active", isMasonry);
-		this.listButtonEl.setAttr("aria-pressed", String(isList));
-		this.cardButtonEl.setAttr("aria-pressed", String(isCard));
-		this.masonryButtonEl.setAttr("aria-pressed", String(isMasonry));
+	private syncLayoutButton(): void {
+		const style = this.plugin.settings.layoutStyle;
+		const nextStyle = this.getNextLayoutStyle(style);
+		const label = `Layout: ${this.getLayoutLabel(style)}. Click to switch to ${this.getLayoutLabel(nextStyle)}.`;
+		this.layoutButtonEl.setAttr("aria-label", label);
+		this.layoutButtonEl.setAttr("title", label);
+		this.layoutButtonEl.toggleClass("is-active", true);
+		this.setToolbarIcon(this.layoutButtonEl, this.getLayoutIcon(style));
+	}
+
+	private getLayoutLabel(style: LiteTabsLayoutStyle): string {
+		if (style === "list") return "List";
+		if (style === "card") return "Card";
+		return "Masonry";
+	}
+
+	private createDisplayOrderButton(): HTMLButtonElement {
+		const button = this.toolbarEl.createEl("button", {
+			cls: "lite-tabs-toolbar-button",
+			attr: {
+				"aria-label": "Cycle display order",
+				title: "Cycle display order",
+			},
+		});
+		button.addEventListener("click", () => {
+			this.plugin.settings.displayOrder = this.getNextDisplayOrder(
+				this.plugin.settings.displayOrder
+			);
+			this.clearAllDragState();
+			this.forceRefresh();
+			this.syncDisplayOrderButton();
+			void this.plugin.saveSettings();
+		});
+		return button;
+	}
+
+	private getNextDisplayOrder(
+		order: LiteTabsDisplayOrder
+	): LiteTabsDisplayOrder {
+		if (order === "workspace") return "name";
+		if (order === "name") return "modified";
+		return "workspace";
+	}
+
+	private syncDisplayOrderButton(): void {
+		const order = this.plugin.settings.displayOrder;
+		const nextOrder = this.getNextDisplayOrder(order);
+		const label = `Display order: ${this.getDisplayOrderLabel(order)}. Click to switch to ${this.getDisplayOrderLabel(nextOrder)}.`;
+		this.displayOrderButtonEl.setAttr("aria-label", label);
+		this.displayOrderButtonEl.setAttr("title", label);
+		this.displayOrderButtonEl.toggleClass(
+			"is-active",
+			order !== "workspace"
+		);
+		this.setToolbarIcon(
+			this.displayOrderButtonEl,
+			this.getDisplayOrderIcon(order)
+		);
+	}
+
+	private getDisplayOrderLabel(order: LiteTabsDisplayOrder): string {
+		if (order === "name") return "Name";
+		if (order === "modified") return "Recently modified";
+		return "Workspace";
+	}
+
+	private getDisplayOrderIcon(order: LiteTabsDisplayOrder): string {
+		if (order === "name") return "arrow-down-a-z";
+		if (order === "modified") return "clock-3";
+		return "panel-left";
 	}
 
 	private createIconButton(): HTMLButtonElement {
@@ -713,7 +791,7 @@ export class TabController {
 		const showIcons = this.plugin.settings.showIcons;
 		this.iconButtonEl.toggleClass("is-active", showIcons);
 		this.iconButtonEl.setAttr("aria-pressed", String(showIcons));
-		setIcon(this.iconButtonEl, showIcons ? "file" : "file-x");
+		this.setToolbarIcon(this.iconButtonEl, showIcons ? "file" : "file-x");
 	}
 
 	private createInactiveTabsButton(): HTMLButtonElement {
@@ -741,7 +819,10 @@ export class TabController {
 			"aria-pressed",
 			String(hideInactiveTabs)
 		);
-		setIcon(this.inactiveTabsButtonEl, hideInactiveTabs ? "eye-off" : "eye");
+		this.setToolbarIcon(
+			this.inactiveTabsButtonEl,
+			hideInactiveTabs ? "eye-off" : "eye"
+		);
 	}
 
 	private createRefreshButton(): HTMLButtonElement {
@@ -752,11 +833,22 @@ export class TabController {
 				title: "Refresh Lite Tabs",
 			},
 		});
-		setIcon(button, "refresh-cw");
+		this.setToolbarIcon(button, "refresh-cw");
 		button.addEventListener("click", () => {
 			this.forceRefresh();
 		});
 		return button;
+	}
+
+	private setToolbarIcon(
+		el: HTMLElement,
+		icon: string,
+		fallback = "list"
+	): void {
+		setIcon(el, icon);
+		if (!el.querySelector("svg")) {
+			setIcon(el, fallback);
+		}
 	}
 
 	private createSearchInput(): HTMLInputElement {
@@ -955,6 +1047,7 @@ export class TabController {
 	}
 
 	private updatePointerDropTarget(x: number, y: number): void {
+		if (!this.canReorderTabs()) return;
 		if (this.isFilterActive()) return;
 		if (this.isMasonryLayout()) {
 			if (this.isInsideDraggedRow(x, y)) {
@@ -1113,6 +1206,7 @@ export class TabController {
 	}
 
 	private handleListDragOver(event: DragEvent): void {
+		if (!this.canReorderTabs()) return;
 		if (this.isFilterActive()) return;
 		if (this.isMasonryLayout()) {
 			if (this.isInsideDraggedRow(event.clientX, event.clientY)) {
@@ -1175,6 +1269,7 @@ export class TabController {
 	}
 
 	private handleListDrop(event: DragEvent): void {
+		if (!this.canReorderTabs()) return;
 		if (this.isFilterActive()) return;
 		if (this.isMasonryLayout()) {
 			if (this.isInsideDraggedRow(event.clientX, event.clientY)) {
@@ -1309,6 +1404,7 @@ export class TabController {
 		} | null
 	): void {
 		if (!move) return;
+		if (!this.canReorderTabs()) return;
 		if (
 			moveLeafRelative(
 				this.plugin.app,
@@ -2179,7 +2275,7 @@ export class TabController {
 	private applyFilter(): void {
 		const hasFilter = this.isFilterActive();
 		const allowNativeDrag =
-			!hasFilter && !this.isMobile();
+			!hasFilter && !this.isMobile() && this.canReorderTabs();
 		let visibleCount = 0;
 		for (const row of this.rows.values()) {
 			const visible =
@@ -2277,6 +2373,10 @@ export class TabController {
 
 	private isFilterActive(): boolean {
 		return this.filterQuery.length > 0;
+	}
+
+	private canReorderTabs(): boolean {
+		return this.plugin.settings.displayOrder === "workspace";
 	}
 
 	private activateLeaf(leaf: WorkspaceLeaf): void {

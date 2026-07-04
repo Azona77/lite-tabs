@@ -8,11 +8,13 @@ import {
 import LiteTabsPlugin from "./main";
 
 export type LiteTabsLayoutStyle = "list" | "card" | "masonry";
+export type LiteTabsDisplayOrder = "workspace" | "name" | "modified";
 
 export interface LiteTabsSettings {
 	hideNativeTabs: boolean;
 	hideToolbar: boolean;
 	layoutStyle: LiteTabsLayoutStyle;
+	displayOrder: LiteTabsDisplayOrder;
 	mobileStackBottom: boolean;
 	showMobileDragHandles: boolean;
 	showIcons: boolean;
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
 	hideToolbar: false,
 	layoutStyle: "list",
+	displayOrder: "workspace",
 	mobileStackBottom: true,
 	showMobileDragHandles: true,
 	showIcons: true,
@@ -111,6 +114,14 @@ function readLayoutStyle(source: SettingsRecord): LiteTabsLayoutStyle {
 		: DEFAULT_SETTINGS.layoutStyle;
 }
 
+function readDisplayOrder(source: SettingsRecord): LiteTabsDisplayOrder {
+	return source.displayOrder === "name" ||
+		source.displayOrder === "modified" ||
+		source.displayOrder === "workspace"
+		? source.displayOrder
+		: DEFAULT_SETTINGS.displayOrder;
+}
+
 export function normalizeSettings(data: unknown): LiteTabsSettings {
 	const source = isSettingsRecord(data) ? data : {};
 	return {
@@ -125,6 +136,7 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 			DEFAULT_SETTINGS.hideToolbar
 		),
 		layoutStyle: readLayoutStyle(source),
+		displayOrder: readDisplayOrder(source),
 		mobileStackBottom: readBoolean(
 			source,
 			"mobileStackBottom",
@@ -227,6 +239,25 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 								? value
 								: "list";
 						this.plugin.applySettings();
+						this.plugin.refreshViews(true);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Display order")
+			.setDesc("Choose how tabs are ordered in the Lite Tabs panel. Workspace order keeps native drag sorting.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("workspace", "Workspace")
+					.addOption("name", "Name")
+					.addOption("modified", "Recently modified")
+					.setValue(this.plugin.settings.displayOrder)
+					.onChange(async (value) => {
+						this.plugin.settings.displayOrder =
+							value === "name" || value === "modified"
+								? value
+								: "workspace";
 						this.plugin.refreshViews(true);
 						await this.plugin.saveSettings();
 					});

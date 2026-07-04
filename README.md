@@ -8,9 +8,10 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 
 ## Features
 
-* Vertical list, card-style, or masonry-style tab view.
+* Vertical list, card-style, or masonry-style tab view, with one-click layout cycling.
+* Display tabs in workspace order, by name, or by recently modified file time.
 * Local title filtering for currently open tabs.
-* Click to activate a tab, middle-click or use the close button to close a tab, and drag to reorder tabs.
+* Click to activate a tab, middle-click or use the close button to close a tab, and drag to reorder tabs while using workspace order.
 * Minimal display options: hide file icons, toolbar, or inactive tabs.
 * Customizable styles: list/card/masonry size, font size, divider size, and basic highlight style.
 * File-backed tabs expose `data-path` on `.lite-tabs-item` for custom CSS targeting.
@@ -24,6 +25,7 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 * Uses `requestAnimationFrame` to batch refreshes.
 * Reuses existing item DOM elements whenever possible.
 * Updates only the active-state class when the active tab changes.
+* Recently modified order reads file timestamps only for currently open file-backed tabs.
 * Masonry layout uses measured CSS grid spans and batched refreshes instead of a persistent layout cache.
 * Does not maintain large persistent caches or synchronize custom group titles.
 

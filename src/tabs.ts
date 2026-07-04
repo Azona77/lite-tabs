@@ -22,6 +22,7 @@ export interface TabItem {
 	title: string;
 	icon: string;
 	path: string | null;
+	modifiedTime: number | null;
 	parentId: string;
 	active: boolean;
 	pinned: boolean;
@@ -41,6 +42,7 @@ export function collectTabs(app: App): TabItem[] {
 			title: leaf.getDisplayText(),
 			icon: leaf.getIcon(),
 			path: getLeafPath(leaf),
+			modifiedTime: getLeafModifiedTime(leaf),
 			parentId: getLeafParentId(leaf),
 			active: activeId === id,
 			pinned: !!leaf.getViewState().pinned,
@@ -54,6 +56,12 @@ function getLeafPath(leaf: WorkspaceLeaf): string | null {
 	const view = leaf.view;
 	if (!(view instanceof FileView)) return null;
 	return view.file?.path ?? null;
+}
+
+function getLeafModifiedTime(leaf: WorkspaceLeaf): number | null {
+	const view = leaf.view;
+	if (!(view instanceof FileView)) return null;
+	return view.file?.stat.mtime ?? null;
 }
 
 export function moveLeafBefore(
