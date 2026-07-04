@@ -15,6 +15,12 @@ const LITE_TABS_ICON = `
 	<rect x="16" y="70" width="68" height="12" rx="4" fill="currentColor"/>
 </svg>`;
 
+const LITE_TABS_SORT_NAME_ICON = `
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+	<path d="M4 19L8.2 5h1.6L14 19h-1.8l-.9-3.2H6.7L5.8 19H4zM7.2 14h3.6L9 7.6 7.2 14z" fill="currentColor"/>
+	<path d="M16 19h5v-1.5h-2.8L21 13.2V12h-4.8v1.5h2.6L16 17.8V19z" fill="currentColor"/>
+</svg>`;
+
 export default class LiteTabsPlugin extends Plugin {
 	settings: LiteTabsSettings = DEFAULT_SETTINGS;
 	private isLoaded = false;
@@ -22,6 +28,7 @@ export default class LiteTabsPlugin extends Plugin {
 	async onload(): Promise<void> {
 		this.isLoaded = true;
 		addIcon("lite-tabs", LITE_TABS_ICON);
+		addIcon("lite-tabs-sort-name", LITE_TABS_SORT_NAME_ICON);
 		await this.loadSettings();
 		this.applySettings();
 
@@ -217,11 +224,7 @@ export default class LiteTabsPlugin extends Plugin {
 		placement: "auto" | "sidebar" | "main" = "auto"
 	): Promise<void> {
 		const resolvedPlacement =
-			placement === "auto"
-				? this.isMobile()
-					? "main"
-					: "sidebar"
-				: placement;
+			placement === "auto" ? "sidebar" : placement;
 		const leaf =
 			this.getExistingViewLeaf(resolvedPlacement) ??
 			this.createViewLeaf(resolvedPlacement);
@@ -265,10 +268,6 @@ export default class LiteTabsPlugin extends Plugin {
 
 	private get body(): HTMLElement {
 		return activeDocument.body;
-	}
-
-	private isMobile(): boolean {
-		return this.body.hasClass("is-mobile");
 	}
 
 	private getExistingViewLeaf(

@@ -764,7 +764,7 @@ export class TabController {
 	}
 
 	private getDisplayOrderIcon(order: LiteTabsDisplayOrder): string {
-		if (order === "name") return "arrow-down-a-z";
+		if (order === "name") return "lite-tabs-sort-name";
 		if (order === "modified") return "clock-3";
 		return "panel-left";
 	}
