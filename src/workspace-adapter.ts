@@ -160,8 +160,8 @@ function getMainLeafById(app: App, id: string): WorkspaceLeaf | null {
 	return result;
 }
 
-function asRuntimeLeaf(leaf: WorkspaceLeaf): RuntimeLeaf {
-	return leaf as unknown as RuntimeLeaf;
+function asRuntimeLeaf(leaf: RuntimeLeaf): RuntimeLeaf {
+	return leaf;
 }
 
 function getRuntimeParent(leaf: WorkspaceLeaf): RuntimeTabGroup | null {

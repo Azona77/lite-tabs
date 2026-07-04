@@ -293,23 +293,6 @@ button.lite-tabs-toolbar-button {
     opacity: 1;
 }
 
-body.is-mobile button.lite-tabs-close {
-    block-size: 22px !important;
-    flex-basis: 22px !important;
-    height: 22px !important;
-    inline-size: 22px !important;
-    max-block-size: 22px !important;
-    max-height: 22px !important;
-    max-inline-size: 22px !important;
-    max-width: 22px !important;
-    min-block-size: 22px !important;
-    min-height: 22px !important;
-    min-inline-size: 22px !important;
-    min-width: 22px !important;
-    padding: 0 !important;
-    width: 22px !important;
-}
-
 .lite-tabs-list {
     display: flex;
     flex-direction: column;

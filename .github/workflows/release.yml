@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag to rebuild and attest"
         required: true
-        default: "1.3.8"
+        default: "1.3.9"
 
 permissions:
   contents: write
@@ -73,12 +73,10 @@ jobs:
         shell: bash
         run: |
           cat > release-notes.md <<'EOF'
-          ## Lite Tabs 1.3.8
+          ## Lite Tabs 1.3.9
 
-          - Added display order cycling for workspace, name, and recently modified order.
-          - Refined the floating toolbar layout so tab content stays clear on desktop and mobile.
-          - Restored sidebar as the default automatic placement on mobile.
-          - Replaced the name-sort icon with a bundled A/Z SVG icon.
+          - Removed an unnecessary workspace runtime type assertion.
+          - Removed mobile close-button `!important` overrides by relying on the shared button sizing rules.
           EOF
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
