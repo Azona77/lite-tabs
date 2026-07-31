@@ -4,6 +4,8 @@ import {
 	Setting,
 	TextComponent,
 	setIcon,
+	type SettingDefinition,
+	type SettingDefinitionItem,
 } from "obsidian";
 import type LiteTabsPlugin from "./main";
 
@@ -68,6 +70,333 @@ type NumericSettingKey = {
 		? K
 		: never;
 }[keyof LiteTabsSettings];
+
+type ToggleSettingKey = {
+	[K in keyof LiteTabsSettings]: LiteTabsSettings[K] extends boolean
+		? K
+		: never;
+}[keyof LiteTabsSettings];
+
+type DropdownSettingKey =
+	| "layoutStyle"
+	| "displayOrder"
+	| "toolbarPosition";
+
+interface SettingSpecBase<K extends keyof LiteTabsSettings> {
+	key: K;
+	name: string;
+	description: string;
+	aliases?: string[];
+}
+
+interface ToggleSettingSpec extends SettingSpecBase<ToggleSettingKey> {
+	type: "toggle";
+}
+
+interface DropdownSettingSpec extends SettingSpecBase<DropdownSettingKey> {
+	type: "dropdown";
+	options: Record<string, string>;
+}
+
+interface NumberSettingSpec extends SettingSpecBase<NumericSettingKey> {
+	type: "number";
+	recommendedMin: number;
+	recommendedMax: number;
+	step: number;
+	refreshLayout?: boolean;
+}
+
+type SettingSpec =
+	| ToggleSettingSpec
+	| DropdownSettingSpec
+	| NumberSettingSpec;
+
+interface SettingSectionSpec {
+	name: string;
+	icon: string;
+	items: SettingSpec[];
+}
+
+const SETTING_SECTIONS: SettingSectionSpec[] = [
+	{
+		name: "Tabs and layout",
+		icon: "layout-grid",
+		items: [
+			{
+				type: "toggle",
+				key: "hideNativeTabs",
+				name: "Hide inactive tabs",
+				description:
+					"Hide inactive native tab headers while keeping the active tab and native controls available.",
+				aliases: ["native tabs", "tab headers"],
+			},
+			{
+				type: "dropdown",
+				key: "layoutStyle",
+				name: "Layout style",
+				description:
+					"Choose how tabs are presented in the Lite Tabs panel.",
+				aliases: ["list", "card", "masonry"],
+				options: {
+					list: "List",
+					card: "Card",
+					masonry: "Masonry",
+				},
+			},
+			{
+				type: "dropdown",
+				key: "displayOrder",
+				name: "Display order",
+				description:
+					"Choose how tabs are ordered in the Lite Tabs panel. Workspace order keeps native drag sorting.",
+				aliases: ["sort", "workspace", "name", "modified"],
+				options: {
+					workspace: "Workspace",
+					name: "Name",
+					modified: "Recently modified",
+				},
+			},
+			{
+				type: "toggle",
+				key: "displayOrderReversed",
+				name: "Reverse display order",
+				description:
+					"Show the selected display order in reverse. Workspace reverse is display-only and disables drag sorting.",
+				aliases: ["reverse sort", "descending"],
+			},
+		],
+	},
+	{
+		name: "Mobile",
+		icon: "smartphone",
+		items: [
+			{
+				type: "toggle",
+				key: "mobileStackBottom",
+				name: "Stack mobile tabs at bottom",
+				description:
+					"Mobile only. Align the Lite Tabs list, card, and masonry views to the bottom of the panel.",
+				aliases: ["phone", "bottom stack"],
+			},
+			{
+				type: "toggle",
+				key: "showMobileDragHandles",
+				name: "Show mobile drag handles",
+				description:
+					"Mobile only. Show drag handles for touch sorting. Hide them for a cleaner scrolling surface.",
+				aliases: ["touch sorting", "drag handle"],
+			},
+		],
+	},
+	{
+		name: "Panel and toolbar",
+		icon: "panel-left",
+		items: [
+			{
+				type: "toggle",
+				key: "showIcons",
+				name: "Show file icons",
+				description: "Show the icon before each tab title.",
+				aliases: ["file icon", "tab icon"],
+			},
+			{
+				type: "dropdown",
+				key: "toolbarPosition",
+				name: "Toolbar position",
+				description:
+					"Float the compact toolbar at the panel edge or dock it above the tab list.",
+				aliases: ["floating", "docked", "dock top"],
+				options: {
+					floating: "Floating",
+					"docked-top": "Docked at top",
+				},
+			},
+			{
+				type: "toggle",
+				key: "hideToolbar",
+				name: "Hide toolbar",
+				description:
+					"Hide the toolbar. Focus search reveals it temporarily.",
+				aliases: ["toolbar visibility", "search toolbar"],
+			},
+		],
+	},
+	{
+		name: "Separators",
+		icon: "minus",
+		items: [
+			{
+				type: "number",
+				key: "separatorThickness",
+				name: "Separator thickness",
+				description: "Group separator thickness in pixels.",
+				recommendedMin: 1,
+				recommendedMax: 8,
+				step: 1,
+			},
+			{
+				type: "number",
+				key: "separatorMarginY",
+				name: "Separator vertical margin",
+				description:
+					"Vertical spacing around group separators in pixels.",
+				recommendedMin: 0,
+				recommendedMax: 24,
+				step: 1,
+			},
+			{
+				type: "number",
+				key: "separatorMarginX",
+				name: "Separator horizontal margin",
+				description:
+					"Horizontal inset for group separators in pixels.",
+				recommendedMin: 0,
+				recommendedMax: 32,
+				step: 1,
+			},
+		],
+	},
+	{
+		name: "List",
+		icon: "list",
+		items: [
+			{
+				type: "number",
+				key: "listItemHeight",
+				name: "List item height",
+				description: "Minimum row height in list view.",
+				recommendedMin: 22,
+				recommendedMax: 56,
+				step: 1,
+			},
+			{
+				type: "number",
+				key: "listGap",
+				name: "List gap",
+				description: "Gap between rows in list view.",
+				recommendedMin: 0,
+				recommendedMax: 12,
+				step: 1,
+			},
+			{
+				type: "number",
+				key: "listFontSize",
+				name: "List font size",
+				description: "Title font size in list view.",
+				recommendedMin: 10,
+				recommendedMax: 18,
+				step: 1,
+			},
+		],
+	},
+	{
+		name: "Cards and masonry",
+		icon: "layout-dashboard",
+		items: [
+			{
+				type: "number",
+				key: "cardWidth",
+				name: "Card width",
+				description: "Minimum card width in pixels.",
+				recommendedMin: 120,
+				recommendedMax: 320,
+				step: 10,
+				refreshLayout: true,
+			},
+			{
+				type: "number",
+				key: "cardHeight",
+				name: "Card height",
+				description:
+					"Fixed card height in pixels. Overflowing title text is hidden.",
+				recommendedMin: 40,
+				recommendedMax: 120,
+				step: 2,
+			},
+			{
+				type: "number",
+				key: "cardFontSize",
+				name: "Card font size",
+				description:
+					"Title font size in card and masonry views.",
+				recommendedMin: 10,
+				recommendedMax: 20,
+				step: 1,
+				refreshLayout: true,
+			},
+			{
+				type: "number",
+				key: "cardGap",
+				name: "Card gap",
+				description: "Gap between cards in card view.",
+				recommendedMin: 0,
+				recommendedMax: 16,
+				step: 1,
+				refreshLayout: true,
+			},
+		],
+	},
+	{
+		name: "Active tab",
+		icon: "circle-dot",
+		items: [
+			{
+				type: "number",
+				key: "activeTabEmphasis",
+				name: "Active tab emphasis",
+				description: "Accent strength for the active tab background.",
+				recommendedMin: 0,
+				recommendedMax: 45,
+				step: 1,
+			},
+			{
+				type: "toggle",
+				key: "activeTabBackground",
+				name: "Active tab background",
+				description: "Use a subtle accent background on the active tab.",
+				aliases: ["highlight", "accent background"],
+			},
+			{
+				type: "toggle",
+				key: "activeTabBorder",
+				name: "Active tab border",
+				description: "Use an accent border on the active tab.",
+				aliases: ["highlight", "accent border"],
+			},
+		],
+	},
+];
+
+const APPLY_SETTINGS_KEYS = new Set<keyof LiteTabsSettings>([
+	"hideNativeTabs",
+	"hideToolbar",
+	"toolbarPosition",
+	"layoutStyle",
+	"mobileStackBottom",
+	"showMobileDragHandles",
+	"showIcons",
+	"separatorThickness",
+	"separatorMarginY",
+	"separatorMarginX",
+	"listItemHeight",
+	"listGap",
+	"listFontSize",
+	"cardWidth",
+	"cardHeight",
+	"cardFontSize",
+	"cardGap",
+	"activeTabEmphasis",
+	"activeTabBackground",
+	"activeTabBorder",
+]);
+
+const REFRESH_VIEW_KEYS = new Set<keyof LiteTabsSettings>([
+	"layoutStyle",
+	"displayOrder",
+	"displayOrderReversed",
+	"showMobileDragHandles",
+	"showIcons",
+]);
 
 function isSettingsRecord(value: unknown): value is SettingsRecord {
 	return typeof value === "object" && value !== null;
@@ -200,6 +529,10 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 	};
 }
 
+function isLiteTabsSettingKey(key: string): key is keyof LiteTabsSettings {
+	return Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, key);
+}
+
 export class LiteTabsSettingTab extends PluginSettingTab {
 	private plugin: LiteTabsPlugin;
 
@@ -208,293 +541,138 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		const items: SettingDefinition[] = [];
+		for (const section of SETTING_SECTIONS) {
+			items.push({
+				name: section.name,
+				searchable: false,
+				render: (setting) => {
+					this.configureSection(setting, section.name, section.icon);
+				},
+			});
+			for (const spec of section.items) {
+				items.push(this.createSettingDefinition(spec));
+			}
+		}
+
+		return [
+			{
+				type: "group",
+				cls: "lite-tabs-settings",
+				items,
+			},
+		];
+	}
+
+	getControlValue(key: string): unknown {
+		return isLiteTabsSettingKey(key)
+			? this.plugin.settings[key]
+			: undefined;
+	}
+
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (!isLiteTabsSettingKey(key)) return;
+		const normalized = normalizeSettings({
+			...this.plugin.settings,
+			[key]: value,
+		});
+		const settingsRecord = this.plugin.settings as unknown as Record<
+			string,
+			unknown
+		>;
+		settingsRecord[key] = normalized[key];
+
+		if (APPLY_SETTINGS_KEYS.has(key)) {
+			this.plugin.applySettings();
+		}
+		if (REFRESH_VIEW_KEYS.has(key)) {
+			this.plugin.refreshViews(true);
+		}
+		await this.plugin.saveSettings();
+	}
+
+	private createSettingDefinition(spec: SettingSpec): SettingDefinition {
+		if (spec.type === "number") {
+			return {
+				name: spec.name,
+				desc: spec.description,
+				aliases: spec.aliases,
+				render: (setting) => {
+					this.configureNumberSetting(setting, spec);
+				},
+			};
+		}
+		if (spec.type === "dropdown") {
+			return {
+				name: spec.name,
+				desc: spec.description,
+				aliases: spec.aliases,
+				control: {
+					type: "dropdown",
+					key: spec.key,
+					defaultValue: DEFAULT_SETTINGS[spec.key],
+					options: { ...spec.options },
+				},
+			};
+		}
+		return {
+			name: spec.name,
+			desc: spec.description,
+			aliases: spec.aliases,
+			control: {
+				type: "toggle",
+				key: spec.key,
+				defaultValue: DEFAULT_SETTINGS[spec.key],
+			},
+		};
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.addClass("lite-tabs-settings");
-		this.addSection(containerEl, "Tabs and layout", "layout-grid");
 
-		new Setting(containerEl)
-			.setName("Hide inactive tabs")
-			.setDesc("Hide inactive native tab headers while keeping the active tab and native controls available.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.hideNativeTabs)
-					.onChange(async (value) => {
-						this.plugin.settings.hideNativeTabs = value;
-						this.plugin.applySettings();
-						await this.plugin.saveSettings();
-					});
-			});
+		for (const section of SETTING_SECTIONS) {
+			this.addSection(containerEl, section.name, section.icon);
+			for (const spec of section.items) {
+				this.addLegacySetting(containerEl, spec);
+			}
+		}
+	}
 
-		new Setting(containerEl)
-			.setName("Layout style")
-			.setDesc("Choose how tabs are presented in the Lite Tabs panel.")
-			.addDropdown((dropdown) => {
+	private addLegacySetting(
+		containerEl: HTMLElement,
+		spec: SettingSpec
+	): void {
+		const setting = new Setting(containerEl);
+		if (spec.type === "number") {
+			this.configureNumberSetting(setting, spec);
+			return;
+		}
+
+		setting.setName(spec.name).setDesc(spec.description);
+		if (spec.type === "dropdown") {
+			setting.addDropdown((dropdown) => {
+				for (const [value, label] of Object.entries(spec.options)) {
+					dropdown.addOption(value, label);
+				}
 				dropdown
-					.addOption("list", "List")
-					.addOption("card", "Card")
-					.addOption("masonry", "Masonry")
-					.setValue(this.plugin.settings.layoutStyle)
-					.onChange(async (value) => {
-						this.plugin.settings.layoutStyle =
-							value === "card" || value === "masonry"
-								? value
-								: "list";
-						this.plugin.applySettings();
-						this.plugin.refreshViews(true);
-						await this.plugin.saveSettings();
+					.setValue(String(this.getControlValue(spec.key)))
+					.onChange((value) => {
+						void this.setControlValue(spec.key, value);
 					});
 			});
+			return;
+		}
 
-		new Setting(containerEl)
-			.setName("Display order")
-			.setDesc("Choose how tabs are ordered in the Lite Tabs panel. Workspace order keeps native drag sorting.")
-			.addDropdown((dropdown) => {
-				dropdown
-					.addOption("workspace", "Workspace")
-					.addOption("name", "Name")
-					.addOption("modified", "Recently modified")
-					.setValue(this.plugin.settings.displayOrder)
-					.onChange(async (value) => {
-						this.plugin.settings.displayOrder =
-							value === "name" || value === "modified"
-								? value
-								: "workspace";
-						this.plugin.refreshViews(true);
-						await this.plugin.saveSettings();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("Reverse display order")
-			.setDesc("Show the selected display order in reverse. Workspace reverse is display-only and disables drag sorting.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.displayOrderReversed)
-					.onChange(async (value) => {
-						this.plugin.settings.displayOrderReversed = value;
-						this.plugin.refreshViews(true);
-						await this.plugin.saveSettings();
-					});
-			});
-
-		this.addSection(containerEl, "Mobile", "smartphone");
-
-		new Setting(containerEl)
-			.setName("Stack mobile tabs at bottom")
-			.setDesc("Mobile only. Align the Lite Tabs list, card, and masonry views to the bottom of the panel.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.mobileStackBottom)
-					.onChange(async (value) => {
-						this.plugin.settings.mobileStackBottom = value;
-						this.plugin.applySettings();
-						await this.plugin.saveSettings();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("Show mobile drag handles")
-			.setDesc("Mobile only. Show drag handles for touch sorting. Hide them for a cleaner scrolling surface.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.showMobileDragHandles)
-					.onChange(async (value) => {
-						this.plugin.settings.showMobileDragHandles = value;
-						this.plugin.applySettings();
-						this.plugin.refreshViews(true);
-						await this.plugin.saveSettings();
-					});
-			});
-
-		this.addSection(containerEl, "Panel and toolbar", "panel-left");
-
-		new Setting(containerEl)
-			.setName("Show file icons")
-			.setDesc("Show the icon before each tab title.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.showIcons)
-					.onChange(async (value) => {
-						this.plugin.settings.showIcons = value;
-						this.plugin.applySettings();
-						this.plugin.refreshViews(true);
-						await this.plugin.saveSettings();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("Toolbar position")
-			.setDesc("Float the compact toolbar at the panel edge or dock it above the tab list.")
-			.addDropdown((dropdown) => {
-				dropdown
-					.addOption("floating", "Floating")
-					.addOption("docked-top", "Docked at top")
-					.setValue(this.plugin.settings.toolbarPosition)
-					.onChange(async (value) => {
-						this.plugin.settings.toolbarPosition =
-							value === "docked-top" ? "docked-top" : "floating";
-						this.plugin.applySettings();
-						await this.plugin.saveSettings();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("Hide toolbar")
-			.setDesc("Hide the toolbar. Focus search reveals it temporarily.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.hideToolbar)
-					.onChange(async (value) => {
-						this.plugin.settings.hideToolbar = value;
-						this.plugin.applySettings();
-						await this.plugin.saveSettings();
-					});
-			});
-
-		this.addSection(containerEl, "Separators", "minus");
-
-		this.addNumberSetting(
-			containerEl,
-			"Separator thickness",
-			"Group separator thickness in pixels.",
-			"separatorThickness",
-			1,
-			8,
-			1
-		);
-		this.addNumberSetting(
-			containerEl,
-			"Separator vertical margin",
-			"Vertical spacing around group separators in pixels.",
-			"separatorMarginY",
-			0,
-			24,
-			1
-		);
-		this.addNumberSetting(
-			containerEl,
-			"Separator horizontal margin",
-			"Horizontal inset for group separators in pixels.",
-			"separatorMarginX",
-			0,
-			32,
-			1
-		);
-
-		this.addSection(containerEl, "List", "list");
-
-		this.addNumberSetting(
-			containerEl,
-			"List item height",
-			"Minimum row height in list view.",
-			"listItemHeight",
-			22,
-			56,
-			1
-		);
-		this.addNumberSetting(
-			containerEl,
-			"List gap",
-			"Gap between rows in list view.",
-			"listGap",
-			0,
-			12,
-			1
-		);
-		this.addNumberSetting(
-			containerEl,
-			"List font size",
-			"Title font size in list view.",
-			"listFontSize",
-			10,
-			18,
-			1
-		);
-		this.addSection(
-			containerEl,
-			"Cards and masonry",
-			"layout-dashboard"
-		);
-
-		this.addNumberSetting(
-			containerEl,
-			"Card width",
-			"Minimum card width in pixels.",
-			"cardWidth",
-			120,
-			320,
-			10,
-			true
-		);
-		this.addNumberSetting(
-			containerEl,
-			"Card height",
-			"Fixed card height in pixels. Overflowing title text is hidden.",
-			"cardHeight",
-			40,
-			120,
-			2
-		);
-		this.addNumberSetting(
-			containerEl,
-			"Card font size",
-			"Title font size in card and masonry views.",
-			"cardFontSize",
-			10,
-			20,
-			1,
-			true
-		);
-		this.addNumberSetting(
-			containerEl,
-			"Card gap",
-			"Gap between cards in card view.",
-			"cardGap",
-			0,
-			16,
-			1,
-			true
-		);
-
-		this.addSection(containerEl, "Active tab", "circle-dot");
-
-		this.addNumberSetting(
-			containerEl,
-			"Active tab emphasis",
-			"Accent strength for the active tab background.",
-			"activeTabEmphasis",
-			0,
-			45,
-			1
-		);
-
-		new Setting(containerEl)
-			.setName("Active tab background")
-			.setDesc("Use a subtle accent background on the active tab.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.activeTabBackground)
-					.onChange(async (value) => {
-						this.plugin.settings.activeTabBackground = value;
-						this.plugin.applySettings();
-						await this.plugin.saveSettings();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("Active tab border")
-			.setDesc("Use an accent border on the active tab.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.activeTabBorder)
-					.onChange(async (value) => {
-						this.plugin.settings.activeTabBorder = value;
-						this.plugin.applySettings();
-						await this.plugin.saveSettings();
-					});
-			});
+		setting.addToggle((toggle) => {
+			toggle
+				.setValue(Boolean(this.getControlValue(spec.key)))
+				.onChange((value) => {
+					void this.setControlValue(spec.key, value);
+				});
+		});
 	}
 
 	private addSection(
@@ -502,31 +680,34 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 		name: string,
 		icon: string
 	): void {
-		const section = new Setting(containerEl).setHeading();
+		this.configureSection(new Setting(containerEl), name, icon);
+	}
+
+	private configureSection(
+		section: Setting,
+		name: string,
+		icon: string
+	): void {
+		section.setHeading();
 		section.settingEl.addClass("lite-tabs-settings-heading");
 		setIcon(section.nameEl, icon);
 		section.nameEl.createSpan({ text: name });
 	}
 
-	private addNumberSetting(
-		containerEl: HTMLElement,
-		name: string,
-		description: string,
-		key: NumericSettingKey,
-		recommendedMin: number,
-		recommendedMax: number,
-		step: number,
-		refreshLayout = false
+	private configureNumberSetting(
+		setting: Setting,
+		spec: NumberSettingSpec
 	): void {
 		let textComponent: TextComponent;
 		const roundToStep = (value: number) =>
-			Math.round(value / step) * step;
+			Math.round(value / spec.step) * spec.step;
 		const syncRangeHint = () => {
 			const value = Number(textComponent.getValue());
 			const isOutsideRecommendedRange =
 				Number.isFinite(value) &&
-				(value < recommendedMin || value > recommendedMax);
-			const recommendedRange = `${recommendedMin}–${recommendedMax}`;
+				(value < spec.recommendedMin ||
+					value > spec.recommendedMax);
+			const recommendedRange = `${spec.recommendedMin}-${spec.recommendedMax}`;
 			const message = isOutsideRecommendedRange
 				? `Outside the recommended range ${recommendedRange}. This value is still allowed.`
 				: `Recommended range: ${recommendedRange}.`;
@@ -539,17 +720,19 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 		};
 		const commit = async (rawValue: number) => {
 			if (!Number.isFinite(rawValue)) {
-				textComponent.setValue(String(this.plugin.settings[key]));
+				textComponent.setValue(
+					String(this.plugin.settings[spec.key])
+				);
 				syncRangeHint();
 				return;
 			}
 			const value = roundToStep(rawValue);
 			textComponent.setValue(String(value));
 			syncRangeHint();
-			if (this.plugin.settings[key] === value) return;
-			this.plugin.settings[key] = value;
+			if (this.plugin.settings[spec.key] === value) return;
+			this.plugin.settings[spec.key] = value;
 			this.plugin.applySettings();
-			if (refreshLayout) {
+			if (spec.refreshLayout) {
 				this.plugin.refreshViews(true);
 			}
 			await this.plugin.saveSettings();
@@ -557,25 +740,25 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 		const commitFromText = () => {
 			const rawValue = textComponent.getValue().trim();
 			if (rawValue.length === 0) {
-				textComponent.setValue(String(this.plugin.settings[key]));
+				textComponent.setValue(
+					String(this.plugin.settings[spec.key])
+				);
 				syncRangeHint();
 				return;
 			}
 			void commit(Number(rawValue));
 		};
 
-		new Setting(containerEl)
-			.setName(name)
-			.setDesc(description)
+		setting
+			.setName(spec.name)
+			.setDesc(spec.description)
 			.addText((text) => {
 				textComponent = text;
-				text.setValue(String(this.plugin.settings[key]));
+				text.setValue(String(this.plugin.settings[spec.key]));
 				text.inputEl.type = "number";
-				text.inputEl.step = String(step);
+				text.inputEl.step = String(spec.step);
 				text.inputEl.addEventListener("input", syncRangeHint);
-				text.inputEl.addEventListener("blur", () => {
-					commitFromText();
-				});
+				text.inputEl.addEventListener("blur", commitFromText);
 				text.inputEl.addEventListener("keydown", (event) => {
 					if (event.key !== "Enter") return;
 					event.preventDefault();
@@ -588,7 +771,7 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 					.setIcon("rotate-ccw")
 					.setTooltip("Reset to default")
 					.onClick(() => {
-						void commit(DEFAULT_SETTINGS[key]);
+						void commit(DEFAULT_SETTINGS[spec.key]);
 					});
 			});
 	}
