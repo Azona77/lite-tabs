@@ -92,9 +92,8 @@ export class TabController {
 	private plugin: LiteTabsPlugin;
 	private rootEl: HTMLElement;
 	private toolbarEl: HTMLElement;
-	private primaryToolbarEl: HTMLElement;
-	private layoutButtonEl: HTMLButtonElement;
-	private displayOrderButtonEl: HTMLButtonElement;
+	private searchControlEl: HTMLElement;
+	private searchButtonEl: HTMLButtonElement;
 	private searchInputEl: HTMLInputElement;
 	private moreButtonEl: HTMLButtonElement;
 	private listEl: HTMLElement;
@@ -145,17 +144,18 @@ export class TabController {
 			{ passive: false, capture: true }
 		);
 		this.toolbarEl = this.rootEl.createDiv({ cls: "lite-tabs-toolbar" });
-		this.primaryToolbarEl = this.toolbarEl.createDiv({
-			cls: "lite-tabs-primary-controls",
+		this.searchControlEl = this.toolbarEl.createDiv({
+			cls: "lite-tabs-search-control",
 		});
-		this.layoutButtonEl = this.createLayoutButton();
-		this.displayOrderButtonEl = this.createDisplayOrderButton();
+		this.searchButtonEl = this.createSearchButton();
 		this.searchInputEl = this.createSearchInput();
+		this.searchInputEl.id = `lite-tabs-search-${this.instanceId}`;
 		this.moreButtonEl = this.createMoreButton();
 		this.listEl = this.rootEl.createDiv({ cls: "lite-tabs-list" });
 		this.listEl.id = `lite-tabs-list-${this.instanceId}`;
 		this.listEl.setAttr("role", "list");
 		this.listEl.setAttr("aria-label", "Open tabs");
+		this.searchButtonEl.setAttr("aria-controls", this.searchInputEl.id);
 		this.searchInputEl.setAttr("aria-controls", this.listEl.id);
 		this.listEl.addEventListener("dragover", (event) => {
 			this.handleListDragOver(event);
@@ -183,8 +183,6 @@ export class TabController {
 			this.scheduleListOverflowCheck();
 		});
 		this.resizeObserver.observe(this.listEl);
-		this.syncLayoutButton();
-		this.syncDisplayOrderButton();
 		this.syncMoreButton();
 	}
 
@@ -218,7 +216,7 @@ export class TabController {
 	}
 
 	private isMobile(): boolean {
-		return activeDocument.body.hasClass("is-mobile");
+		return this.rootEl.doc.body.hasClass("is-mobile");
 	}
 
 	private isHTMLElement(value: EventTarget | Node | null): value is HTMLElement {
@@ -332,8 +330,6 @@ export class TabController {
 		);
 		this.structureSignature = nextSignature;
 		this.syncActive(items);
-		this.syncLayoutButton();
-		this.syncDisplayOrderButton();
 		this.syncMoreButton();
 		this.applyFilter();
 		this.syncSearchTarget();
@@ -665,32 +661,20 @@ export class TabController {
 		event.stopImmediatePropagation();
 	}
 
-	private createLayoutButton(): HTMLButtonElement {
-		const button = this.primaryToolbarEl.createEl("button", {
-			cls: "lite-tabs-layout-button lite-tabs-primary-button",
+	private createSearchButton(): HTMLButtonElement {
+		const button = this.searchControlEl.createEl("button", {
+			cls: "lite-tabs-toolbar-button lite-tabs-search-button",
 			attr: {
-				"aria-label": "Cycle layout",
-				title: "Cycle layout",
+				"aria-expanded": "false",
+				"aria-label": "Search tabs",
+				title: "Search tabs",
 			},
 		});
 		button.addEventListener("click", () => {
-			this.plugin.settings.layoutStyle = this.getNextLayoutStyle(
-				this.plugin.settings.layoutStyle
-			);
-			this.plugin.applySettings();
-			this.forceRefresh();
-			this.syncLayoutButton();
-			void this.plugin.saveSettings();
+			this.focusSearch();
 		});
+		this.setToolbarIcon(button, "search");
 		return button;
-	}
-
-	private getNextLayoutStyle(
-		style: LiteTabsLayoutStyle
-	): LiteTabsLayoutStyle {
-		if (style === "list") return "card";
-		if (style === "card") return "masonry";
-		return "list";
 	}
 
 	private getLayoutIcon(style: LiteTabsLayoutStyle): string {
@@ -699,67 +683,10 @@ export class TabController {
 		return "layout-grid";
 	}
 
-	private syncLayoutButton(): void {
-		const style = this.plugin.settings.layoutStyle;
-		const nextStyle = this.getNextLayoutStyle(style);
-		const label = `Layout: ${this.getLayoutLabel(style)}. Click to switch to ${this.getLayoutLabel(nextStyle)}.`;
-		this.layoutButtonEl.setAttr("aria-label", label);
-		this.layoutButtonEl.setAttr("title", label);
-		this.layoutButtonEl.toggleClass("is-active", true);
-		this.setToolbarIcon(this.layoutButtonEl, this.getLayoutIcon(style));
-	}
-
 	private getLayoutLabel(style: LiteTabsLayoutStyle): string {
 		if (style === "list") return "List";
 		if (style === "card") return "Card";
 		return "Masonry";
-	}
-
-	private createDisplayOrderButton(): HTMLButtonElement {
-		const button = this.primaryToolbarEl.createEl("button", {
-			cls: "lite-tabs-toolbar-button lite-tabs-primary-button lite-tabs-order-button",
-			attr: {
-				"aria-label": "Cycle display order",
-				title: "Cycle display order",
-			},
-		});
-		button.addEventListener("click", () => {
-			this.setDisplayOrder(
-				this.getNextDisplayOrder(this.plugin.settings.displayOrder)
-			);
-		});
-		button.addEventListener("contextmenu", (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			this.toggleDisplayOrderReversed();
-		});
-		return button;
-	}
-
-	private getNextDisplayOrder(
-		order: LiteTabsDisplayOrder
-	): LiteTabsDisplayOrder {
-		if (order === "workspace") return "name";
-		if (order === "name") return "modified";
-		return "workspace";
-	}
-
-	private syncDisplayOrderButton(): void {
-		const order = this.plugin.settings.displayOrder;
-		const reversed = this.plugin.settings.displayOrderReversed;
-		const nextOrder = this.getNextDisplayOrder(order);
-		const label = `Display order: ${this.getDisplayOrderLabel(order, reversed)}. Click to switch to ${this.getDisplayOrderLabel(nextOrder, reversed)}. Right-click to reverse.`;
-		this.displayOrderButtonEl.setAttr("aria-label", label);
-		this.displayOrderButtonEl.setAttr("title", label);
-		this.displayOrderButtonEl.toggleClass(
-			"is-active",
-			order !== "workspace" || reversed
-		);
-		this.displayOrderButtonEl.toggleClass("is-reversed", reversed);
-		this.setToolbarIcon(
-			this.displayOrderButtonEl,
-			this.getDisplayOrderIcon(order)
-		);
 	}
 
 	private getDisplayOrderLabel(
@@ -785,7 +712,6 @@ export class TabController {
 		this.plugin.settings.displayOrder = order;
 		this.clearAllDragState();
 		this.forceRefresh();
-		this.syncDisplayOrderButton();
 		this.syncMoreButton();
 		void this.plugin.saveSettings();
 	}
@@ -798,7 +724,6 @@ export class TabController {
 		this.plugin.settings.displayOrderReversed = reversed;
 		this.clearAllDragState();
 		this.forceRefresh();
-		this.syncDisplayOrderButton();
 		this.syncMoreButton();
 		void this.plugin.saveSettings();
 	}
@@ -807,6 +732,7 @@ export class TabController {
 		const button = this.toolbarEl.createEl("button", {
 			cls: "lite-tabs-toolbar-button lite-tabs-more-button",
 			attr: {
+				"aria-expanded": "false",
 				"aria-label": "More Lite Tabs options",
 				title: "More Lite Tabs options",
 			},
@@ -820,15 +746,31 @@ export class TabController {
 
 	private syncMoreButton(): void {
 		const hasSecondaryState =
+			this.plugin.settings.layoutStyle !== "list" ||
+			this.plugin.settings.displayOrder !== "workspace" ||
 			this.plugin.settings.displayOrderReversed ||
 			this.plugin.settings.hideNativeTabs ||
 			!this.plugin.settings.showIcons;
+		const layoutLabel = this.getLayoutLabel(this.plugin.settings.layoutStyle);
+		const orderLabel = this.getDisplayOrderLabel(
+			this.plugin.settings.displayOrder,
+			this.plugin.settings.displayOrderReversed
+		);
+		const label = `More Lite Tabs options. Layout: ${layoutLabel}. Display order: ${orderLabel}.`;
 		this.moreButtonEl.toggleClass("is-active", hasSecondaryState);
 		this.moreButtonEl.setAttr("aria-pressed", String(hasSecondaryState));
+		this.moreButtonEl.setAttr("aria-label", label);
+		this.moreButtonEl.setAttr("title", label);
 	}
 
 	private showToolbarMenu(event: MouseEvent): void {
 		const menu = new Menu();
+		this.moreButtonEl.addClass("is-menu-open");
+		this.moreButtonEl.setAttr("aria-expanded", "true");
+		menu.onHide(() => {
+			this.moreButtonEl.removeClass("is-menu-open");
+			this.moreButtonEl.setAttr("aria-expanded", "false");
+		});
 		this.addLayoutMenuItems(menu);
 		menu.addSeparator();
 		this.addDisplayOrderMenuItems(menu);
@@ -883,7 +825,6 @@ export class TabController {
 						this.plugin.settings.layoutStyle = style;
 						this.plugin.applySettings();
 						this.forceRefresh();
-						this.syncLayoutButton();
 						void this.plugin.saveSettings();
 					});
 			});
@@ -927,7 +868,7 @@ export class TabController {
 	}
 
 	private createSearchInput(): HTMLInputElement {
-		const input = this.toolbarEl.createEl("input", {
+		const input = this.searchControlEl.createEl("input", {
 			cls: "lite-tabs-search",
 			attr: {
 				"aria-keyshortcuts": "ArrowUp ArrowDown Enter Escape",
@@ -990,6 +931,7 @@ export class TabController {
 			this.filterQuery.length > 0 ||
 			this.searchInputEl.ownerDocument.activeElement === this.searchInputEl;
 		this.rootEl.toggleClass("is-search-revealed", shouldReveal);
+		this.searchButtonEl.setAttr("aria-expanded", String(shouldReveal));
 	}
 
 	private moveSearchTarget(direction: -1 | 1): void {

@@ -8,11 +8,11 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 
 ## Features
 
-* Vertical list, card-style, or masonry-style tab view, with one-click layout cycling.
+* Vertical list, card-style, or masonry-style tab view, with layout and ordering controls grouped in a compact menu.
 * Display tabs in workspace order, by name, or by recently modified file time.
-* Local title filtering for currently open tabs.
+* Local title filtering through the compact search control or the `Focus search` command.
 * Click to activate a tab, middle-click or use the close button to close a tab, and drag to reorder tabs while using workspace order.
-* Minimal display options: hide file icons, toolbar, or inactive tabs.
+* Minimal display options: hide file icons or inactive tabs, and float, dock, or hide the toolbar.
 * Customizable styles: list/card/masonry size, font size, divider size, and basic highlight style.
 * File-backed tabs expose `data-path` on `.lite-tabs-item` for custom CSS targeting.
 
@@ -103,10 +103,10 @@ Lite Tabs 是一个轻量级 Obsidian 插件，用独立侧边栏面板展示当
 
 ## 功能
 
-* 支持垂直列表、卡片和瀑布流标签页视图。
-* 支持输入筛选。
+* 支持垂直列表、卡片和瀑布流标签页视图，布局与排序选项集中在精简菜单中。
+* 支持通过精简搜索控件或 `Focus search` 命令输入筛选。
 * 单击激活，中键或关闭按钮关闭，拖动排序。
-* 提供精简显示选项：隐藏文件图标、工具栏或非活跃标签页。
+* 提供精简显示选项：隐藏文件图标或非活跃标签页，以及浮动、停靠或隐藏工具栏。
 * 支持基础样式自定义：列表/卡片/瀑布流尺寸、字体大小、分割线尺寸和基础高亮样式。
 * 基于文件的标签页元素会附带 `data-path` 属性，可通过自定义 CSS 进行样式修改。
 
