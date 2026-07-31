@@ -54,7 +54,10 @@ export function applySettingsStyles(
 		!settings.showMobileDragHandles
 	);
 	target.toggleClass("lite-tabs-hide-icons", !settings.showIcons);
-	target.toggleClass("lite-tabs-hide-toolbar", settings.hideToolbar);
+	target.toggleClass(
+		"lite-tabs-hide-toolbar",
+		settings.toolbarPosition === "hidden"
+	);
 	target.toggleClass(
 		"lite-tabs-toolbar-docked",
 		settings.toolbarPosition === "docked-top"

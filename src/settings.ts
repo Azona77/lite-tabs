@@ -11,11 +11,10 @@ import type LiteTabsPlugin from "./main";
 
 export type LiteTabsLayoutStyle = "list" | "card" | "masonry";
 export type LiteTabsDisplayOrder = "workspace" | "name" | "modified";
-type LiteTabsToolbarPosition = "floating" | "docked-top";
+type LiteTabsToolbarPosition = "floating" | "docked-top" | "hidden";
 
 export interface LiteTabsSettings {
 	hideNativeTabs: boolean;
-	hideToolbar: boolean;
 	toolbarPosition: LiteTabsToolbarPosition;
 	layoutStyle: LiteTabsLayoutStyle;
 	displayOrder: LiteTabsDisplayOrder;
@@ -40,7 +39,6 @@ export interface LiteTabsSettings {
 
 export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
-	hideToolbar: false,
 	toolbarPosition: "floating",
 	layoutStyle: "list",
 	displayOrder: "workspace",
@@ -63,7 +61,9 @@ export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	activeTabBorder: true,
 };
 
-type SettingsRecord = Partial<Record<keyof LiteTabsSettings, unknown>>;
+type SettingsRecord = Partial<Record<keyof LiteTabsSettings, unknown>> & {
+	hideToolbar?: unknown;
+};
 
 type NumericSettingKey = {
 	[K in keyof LiteTabsSettings]: LiteTabsSettings[K] extends number
@@ -204,20 +204,19 @@ const SETTING_SECTIONS: SettingSectionSpec[] = [
 				key: "toolbarPosition",
 				name: "Toolbar position",
 				description:
-					"Float the compact toolbar at the panel edge or dock it above the tab list.",
-				aliases: ["floating", "docked", "dock top"],
+					"Float the compact toolbar, dock it above the tab list, or hide it. Focus search still reveals a hidden toolbar temporarily.",
 				options: {
 					floating: "Floating",
 					"docked-top": "Docked at top",
+					hidden: "Hidden",
 				},
-			},
-			{
-				type: "toggle",
-				key: "hideToolbar",
-				name: "Hide toolbar",
-				description:
-					"Hide the toolbar. Focus search reveals it temporarily.",
-				aliases: ["toolbar visibility", "search toolbar"],
+				aliases: [
+					"floating",
+					"docked",
+					"dock top",
+					"hide toolbar",
+					"toolbar visibility",
+				],
 			},
 		],
 	},
@@ -369,7 +368,6 @@ const SETTING_SECTIONS: SettingSectionSpec[] = [
 
 const APPLY_SETTINGS_KEYS = new Set<keyof LiteTabsSettings>([
 	"hideNativeTabs",
-	"hideToolbar",
 	"toolbarPosition",
 	"layoutStyle",
 	"mobileStackBottom",
@@ -439,8 +437,10 @@ function readDisplayOrder(source: SettingsRecord): LiteTabsDisplayOrder {
 }
 
 function readToolbarPosition(source: SettingsRecord): LiteTabsToolbarPosition {
+	if (source.hideToolbar === true) return "hidden";
 	return source.toolbarPosition === "docked-top" ||
-		source.toolbarPosition === "floating"
+		source.toolbarPosition === "floating" ||
+		source.toolbarPosition === "hidden"
 		? source.toolbarPosition
 		: DEFAULT_SETTINGS.toolbarPosition;
 }
@@ -452,11 +452,6 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 			source,
 			"hideNativeTabs",
 			DEFAULT_SETTINGS.hideNativeTabs
-		),
-		hideToolbar: readBoolean(
-			source,
-			"hideToolbar",
-			DEFAULT_SETTINGS.hideToolbar
 		),
 		toolbarPosition: readToolbarPosition(source),
 		layoutStyle: readLayoutStyle(source),
