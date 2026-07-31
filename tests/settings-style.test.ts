@@ -10,7 +10,6 @@ import {
 
 const TEST_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
-	hideToolbar: false,
 	toolbarPosition: "floating",
 	layoutStyle: "list",
 	displayOrder: "workspace",
@@ -74,6 +73,17 @@ test("settings styles apply layout, visibility, and numeric values", () => {
 		target.styles.get("--lite-tabs-active-background-strength"),
 		"27%"
 	);
+});
+
+test("hidden toolbar position maps to the toolbar visibility class", () => {
+	const target = new FakeStyleTarget();
+	applySettingsStyles(target, {
+		...TEST_SETTINGS,
+		toolbarPosition: "hidden",
+	});
+
+	assert.equal(target.classes.has("lite-tabs-hide-toolbar"), true);
+	assert.equal(target.classes.has("lite-tabs-toolbar-docked"), false);
 });
 
 test("settings styles are fully removed on cleanup", () => {
