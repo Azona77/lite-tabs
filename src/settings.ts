@@ -15,6 +15,7 @@ type LiteTabsToolbarPosition = "floating" | "docked-top" | "hidden";
 
 export interface LiteTabsSettings {
 	hideNativeTabs: boolean;
+	singlePaneMode: boolean;
 	toolbarPosition: LiteTabsToolbarPosition;
 	layoutStyle: LiteTabsLayoutStyle;
 	displayOrder: LiteTabsDisplayOrder;
@@ -39,6 +40,7 @@ export interface LiteTabsSettings {
 
 export const DEFAULT_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
+	singlePaneMode: false,
 	toolbarPosition: "floating",
 	layoutStyle: "list",
 	displayOrder: "workspace",
@@ -122,6 +124,14 @@ const SETTING_SECTIONS: SettingSectionSpec[] = [
 		name: "Tabs and layout",
 		icon: "layout-grid",
 		items: [
+			{
+				type: "toggle",
+				key: "singlePaneMode",
+				name: "Single-pane mode",
+				description:
+					"Show only the active tab group in the main workspace while preserving the full split layout.",
+				aliases: ["focus mode", "zen mode", "active group"],
+			},
 			{
 				type: "toggle",
 				key: "hideNativeTabs",
@@ -368,6 +378,7 @@ const SETTING_SECTIONS: SettingSectionSpec[] = [
 
 const APPLY_SETTINGS_KEYS = new Set<keyof LiteTabsSettings>([
 	"hideNativeTabs",
+	"singlePaneMode",
 	"toolbarPosition",
 	"layoutStyle",
 	"mobileStackBottom",
@@ -452,6 +463,11 @@ export function normalizeSettings(data: unknown): LiteTabsSettings {
 			source,
 			"hideNativeTabs",
 			DEFAULT_SETTINGS.hideNativeTabs
+		),
+		singlePaneMode: readBoolean(
+			source,
+			"singlePaneMode",
+			DEFAULT_SETTINGS.singlePaneMode
 		),
 		toolbarPosition: readToolbarPosition(source),
 		layoutStyle: readLayoutStyle(source),
@@ -564,6 +580,17 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 		return isLiteTabsSettingKey(key)
 			? this.plugin.settings[key]
 			: undefined;
+	}
+
+	refreshFromSettings(): void {
+		const runtimeUpdate = (
+			this as unknown as { update?: () => void }
+		).update;
+		if (typeof runtimeUpdate === "function") {
+			runtimeUpdate.call(this);
+		} else if (this.containerEl.isConnected) {
+			this.display();
+		}
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {

@@ -713,7 +713,7 @@ export class TabController {
 		this.clearAllDragState();
 		this.forceRefresh();
 		this.syncMoreButton();
-		void this.plugin.saveSettings();
+		void this.plugin.saveSettingsAndRefreshSettingTab();
 	}
 
 	private toggleDisplayOrderReversed(): void {
@@ -725,7 +725,7 @@ export class TabController {
 		this.clearAllDragState();
 		this.forceRefresh();
 		this.syncMoreButton();
-		void this.plugin.saveSettings();
+		void this.plugin.saveSettingsAndRefreshSettingTab();
 	}
 
 	private createMoreButton(): HTMLButtonElement {
@@ -745,20 +745,12 @@ export class TabController {
 	}
 
 	private syncMoreButton(): void {
-		const hasSecondaryState =
-			this.plugin.settings.layoutStyle !== "list" ||
-			this.plugin.settings.displayOrder !== "workspace" ||
-			this.plugin.settings.displayOrderReversed ||
-			this.plugin.settings.hideNativeTabs ||
-			!this.plugin.settings.showIcons;
 		const layoutLabel = this.getLayoutLabel(this.plugin.settings.layoutStyle);
 		const orderLabel = this.getDisplayOrderLabel(
 			this.plugin.settings.displayOrder,
 			this.plugin.settings.displayOrderReversed
 		);
 		const label = `More Lite Tabs options. Layout: ${layoutLabel}. Display order: ${orderLabel}.`;
-		this.moreButtonEl.toggleClass("is-active", hasSecondaryState);
-		this.moreButtonEl.setAttr("aria-pressed", String(hasSecondaryState));
 		this.moreButtonEl.setAttr("aria-label", label);
 		this.moreButtonEl.setAttr("title", label);
 	}
@@ -777,6 +769,17 @@ export class TabController {
 		menu.addSeparator();
 		menu.addItem((item) => {
 			item
+				.setTitle("Single-pane mode")
+				.setIcon("maximize-2")
+				.setChecked(this.plugin.settings.singlePaneMode)
+				.onClick(() => {
+					void this.plugin
+						.setSinglePaneMode(!this.plugin.settings.singlePaneMode)
+						.then(() => this.syncMoreButton());
+				});
+		});
+		menu.addItem((item) => {
+			item
 				.setTitle("Show file icons")
 				.setIcon(this.plugin.settings.showIcons ? "file" : "file-x")
 				.setChecked(this.plugin.settings.showIcons)
@@ -786,7 +789,7 @@ export class TabController {
 					this.plugin.applySettings();
 					this.syncMoreButton();
 					this.scheduleMasonryLayout();
-					void this.plugin.saveSettings();
+					void this.plugin.saveSettingsAndRefreshSettingTab();
 				});
 		});
 		menu.addItem((item) => {
@@ -801,7 +804,7 @@ export class TabController {
 						!this.plugin.settings.hideNativeTabs;
 					this.plugin.applySettings();
 					this.syncMoreButton();
-					void this.plugin.saveSettings();
+					void this.plugin.saveSettingsAndRefreshSettingTab();
 				});
 		});
 		menu.addSeparator();
@@ -825,7 +828,8 @@ export class TabController {
 						this.plugin.settings.layoutStyle = style;
 						this.plugin.applySettings();
 						this.forceRefresh();
-						void this.plugin.saveSettings();
+						this.syncMoreButton();
+						void this.plugin.saveSettingsAndRefreshSettingTab();
 					});
 			});
 		}
