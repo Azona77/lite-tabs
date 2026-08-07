@@ -13,9 +13,6 @@ try {
 	await build({
 		entryPoints,
 		bundle: true,
-		alias: {
-			obsidian: join(process.cwd(), "tests", "obsidian-stub.ts"),
-		},
 		format: "cjs",
 		platform: "node",
 		target: "node20",

@@ -12,7 +12,6 @@ import {
 	syncSettingsStyleTargets,
 } from "./settings-style";
 import { LITE_TABS_VIEW_TYPE, collectTabs } from "./tabs";
-import { WorkspaceFocusController } from "./WorkspaceFocusController";
 
 const LITE_TABS_ICON = `
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -31,18 +30,12 @@ export default class LiteTabsPlugin extends Plugin {
 	settings: LiteTabsSettings = DEFAULT_SETTINGS;
 	private isLoaded = false;
 	private styledBodies = new Set<HTMLElement>();
-	private workspaceFocus: WorkspaceFocusController | null = null;
-	private settingTab: LiteTabsSettingTab | null = null;
 
 	async onload(): Promise<void> {
 		this.isLoaded = true;
 		addIcon("lite-tabs", LITE_TABS_ICON);
 		addIcon("lite-tabs-sort-name", LITE_TABS_SORT_NAME_ICON);
 		await this.loadSettings();
-		this.workspaceFocus = new WorkspaceFocusController(
-			this.app,
-			LITE_TABS_VIEW_TYPE
-		);
 		this.applySettings();
 
 		this.registerView(
@@ -53,7 +46,6 @@ export default class LiteTabsPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on("layout-change", () => {
 				this.refreshViews();
-				this.workspaceFocus?.handleLayoutChange();
 			})
 		);
 		this.registerEvent(
@@ -69,9 +61,8 @@ export default class LiteTabsPlugin extends Plugin {
 			})
 		);
 		this.registerEvent(
-			this.app.workspace.on("active-leaf-change", (leaf) => {
+			this.app.workspace.on("active-leaf-change", () => {
 				this.syncActiveViews();
-				this.workspaceFocus?.handleActiveLeafChange(leaf);
 			})
 		);
 		this.registerEvent(
@@ -118,16 +109,8 @@ export default class LiteTabsPlugin extends Plugin {
 			name: "Refresh panel",
 			callback: () => this.refreshViews(true),
 		});
-		this.addCommand({
-			id: "toggle-single-pane-mode",
-			name: "Toggle single-pane mode",
-			callback: () => {
-				void this.setSinglePaneMode(!this.settings.singlePaneMode);
-			},
-		});
 
-		this.settingTab = new LiteTabsSettingTab(this.app, this);
-		this.addSettingTab(this.settingTab);
+		this.addSettingTab(new LiteTabsSettingTab(this.app, this));
 
 		this.app.workspace.onLayoutReady(() => {
 			if (!this.isLoaded) return;
@@ -138,9 +121,6 @@ export default class LiteTabsPlugin extends Plugin {
 
 	onunload(): void {
 		this.isLoaded = false;
-		this.workspaceFocus?.dispose();
-		this.workspaceFocus = null;
-		this.settingTab = null;
 		for (const body of this.styledBodies) {
 			clearSettingsStyles(body);
 		}
@@ -155,11 +135,6 @@ export default class LiteTabsPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async saveSettingsAndRefreshSettingTab(): Promise<void> {
-		await this.saveSettings();
-		this.settingTab?.refreshFromSettings();
-	}
-
 	applySettings(): void {
 		const currentBodies = this.getWorkspaceBodies();
 		syncSettingsStyleTargets(
@@ -167,14 +142,6 @@ export default class LiteTabsPlugin extends Plugin {
 			currentBodies,
 			this.settings
 		);
-		this.workspaceFocus?.setEnabled(this.settings.singlePaneMode);
-	}
-
-	async setSinglePaneMode(enabled: boolean): Promise<void> {
-		if (this.settings.singlePaneMode === enabled) return;
-		this.settings.singlePaneMode = enabled;
-		this.applySettings();
-		await this.saveSettingsAndRefreshSettingTab();
 	}
 
 	private applySettingsToBody(body: HTMLElement): void {

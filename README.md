@@ -15,7 +15,6 @@ Lite Tabs is a lightweight Obsidian plugin that displays the tabs currently open
 * Minimal display options: hide file icons or inactive tabs, and float, dock, or hide the toolbar.
 * Customizable styles: list/card/masonry size, font size, divider size, and basic highlight style.
 * File-backed tabs expose `data-path` on `.lite-tabs-item` for custom CSS targeting.
-* Optional single-pane mode shows only the active tab group in the main workspace without closing or moving the hidden groups.
 
 > [!NOTE]
 > Lite Tabs is designed for managing tabs that are already open in the editor area. It is not intended to replace a full file explorer, workspace manager, or project navigation system.

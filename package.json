@@ -1,6 +1,6 @@
 {
 	"name": "lite-tabs",
-	"version": "1.6.0",
+	"version": "1.5.1",
 	"description": "A lightweight Obsidian tab panel focused on fast native-tab replacement.",
 	"main": "main.js",
 	"scripts": {
