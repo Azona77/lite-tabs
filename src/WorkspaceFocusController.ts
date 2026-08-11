@@ -178,15 +178,15 @@ export class WorkspaceFocusController {
 		this.clearTopRightSpace();
 		const proxy =
 			this.rightSidebarToggleProxy ??
-			this.createRightSidebarToggle(next.document);
+			this.createRightSidebarToggle(next.headerEl);
 		if (proxy.parentElement !== next.headerEl) {
 			next.headerEl.appendChild(proxy);
 		}
 		this.ensureTopRightSpace(next.groupEl);
 	}
 
-	private createRightSidebarToggle(document: Document): HTMLElement {
-		const proxy = document.createElement("div");
+	private createRightSidebarToggle(headerEl: HTMLElement): HTMLElement {
+		const proxy = headerEl.createDiv();
 		proxy.classList.add("sidebar-toggle-button");
 		proxy.classList.add("mod-right");
 		proxy.classList.add(RIGHT_TOGGLE_PROXY_CLASS);
@@ -194,7 +194,7 @@ export class WorkspaceFocusController {
 		proxy.setAttribute("role", "button");
 		proxy.setAttribute("tabindex", "0");
 		proxy.setAttribute("title", "Toggle right sidebar");
-		const button = document.createElement("div");
+		const button = proxy.createDiv();
 		button.classList.add("clickable-icon");
 		setIcon(button, "sidebar-toggle-button-icon");
 		proxy.addEventListener("click", () => {
@@ -205,7 +205,6 @@ export class WorkspaceFocusController {
 			event.preventDefault();
 			this.app.workspace.rightSplit.toggle();
 		});
-		proxy.appendChild(button);
 		this.rightSidebarToggleProxy = proxy;
 		return proxy;
 	}

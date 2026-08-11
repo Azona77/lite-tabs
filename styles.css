@@ -5,18 +5,20 @@ body.lite-tabs-hide-native
     display: none;
 }
 
-body.lite-tabs-single-pane
+body.lite-tabs-single-pane.lite-tabs-single-pane
     .workspace-split.lite-tabs-focus-path
     > .workspace-split:not(.lite-tabs-focus-path),
-body.lite-tabs-single-pane
+body.lite-tabs-single-pane.lite-tabs-single-pane
     .workspace-split.lite-tabs-focus-path
     > .workspace-tabs:not(.lite-tabs-focus-target) {
-    display: none !important;
+    display: none;
 }
 
-body.lite-tabs-single-pane .workspace-split.lite-tabs-focus-path,
-body.lite-tabs-single-pane .workspace-tabs.lite-tabs-focus-target {
-    flex: 1 1 0 !important;
+body.lite-tabs-single-pane.lite-tabs-single-pane
+    .workspace-split.lite-tabs-focus-path,
+body.lite-tabs-single-pane.lite-tabs-single-pane
+    .workspace-tabs.lite-tabs-focus-target {
+    flex: 1 1 0;
     min-width: 0;
     min-height: 0;
 }

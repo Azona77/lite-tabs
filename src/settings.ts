@@ -589,7 +589,7 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 		if (typeof runtimeUpdate === "function") {
 			runtimeUpdate.call(this);
 		} else if (this.containerEl.isConnected) {
-			this.display();
+			this.renderLegacySettings();
 		}
 	}
 
@@ -651,6 +651,10 @@ export class LiteTabsSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
+		this.renderLegacySettings();
+	}
+
+	private renderLegacySettings(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.addClass("lite-tabs-settings");

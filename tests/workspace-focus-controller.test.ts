@@ -56,6 +56,10 @@ class FakeElement {
 		return child;
 	}
 
+	createDiv(): FakeElement {
+		return this.appendChild(this.ownerDocument.createElement("div"));
+	}
+
 	matches(selector: string): boolean {
 		const classNames = selector
 			.split(".")
