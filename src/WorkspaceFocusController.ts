@@ -198,28 +198,73 @@ export class WorkspaceFocusController {
 		button.classList.add("clickable-icon");
 		setIcon(button, "sidebar-toggle-button-icon");
 		proxy.addEventListener("click", () => {
-			this.app.workspace.rightSplit.toggle();
+			this.toggleRightSidebar();
 		});
 		proxy.addEventListener("keydown", (event) => {
 			if (event.key !== "Enter" && event.key !== " ") return;
 			event.preventDefault();
-			this.app.workspace.rightSplit.toggle();
+			this.toggleRightSidebar();
 		});
 		this.rightSidebarToggleProxy = proxy;
 		return proxy;
+	}
+
+	private toggleRightSidebar(): void {
+		this.app.workspace.rightSplit.toggle();
+		if (this.topRightSpaceTarget) {
+			this.ensureTopRightSpace(this.topRightSpaceTarget);
+		}
+		this.scheduleReconcile();
 	}
 
 	private ensureTopRightSpace(groupEl: HTMLElement): void {
 		if (this.topRightSpaceTarget !== groupEl) {
 			this.clearTopRightSpace();
 			this.topRightSpaceTarget = groupEl;
-			this.addedTopRightSpace = !groupEl.classList.contains(
-				TOP_RIGHT_SPACE_CLASS
-			);
 		}
-		if (this.addedTopRightSpace) {
+		if (
+			this.addedTopRightSpace &&
+			!groupEl.classList.contains(TOP_RIGHT_SPACE_CLASS)
+		) {
+			this.addedTopRightSpace = false;
+		}
+
+		const hasVisibleTopRightSpace = this.hasVisibleTopRightSpace(groupEl);
+		if (hasVisibleTopRightSpace) {
+			if (this.addedTopRightSpace) {
+				groupEl.classList.remove(TOP_RIGHT_SPACE_CLASS);
+			}
+			this.addedTopRightSpace = false;
+			return;
+		}
+
+		if (!groupEl.classList.contains(TOP_RIGHT_SPACE_CLASS)) {
 			groupEl.classList.add(TOP_RIGHT_SPACE_CLASS);
+			this.addedTopRightSpace = true;
 		}
+	}
+
+	private hasVisibleTopRightSpace(groupEl: HTMLElement): boolean {
+		const rootEl = groupEl.closest<HTMLElement>(
+			".workspace-split.mod-root"
+		);
+		return Array.from(
+			groupEl.ownerDocument.body.querySelectorAll<HTMLElement>(
+				`.workspace-tabs.${TOP_RIGHT_SPACE_CLASS}`
+			)
+		).some(
+			(candidate) =>
+				candidate !== groupEl &&
+				!rootEl?.contains(candidate) &&
+				this.isTopRightSpaceAvailable(candidate)
+		);
+	}
+
+	private isTopRightSpaceAvailable(candidate: HTMLElement): boolean {
+		if (candidate.closest(".workspace-split.mod-right-split")) {
+			return !this.app.workspace.rightSplit.collapsed;
+		}
+		return candidate.isShown();
 	}
 
 	private clearTopRightSpace(preserve = false): void {

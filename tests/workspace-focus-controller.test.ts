@@ -37,6 +37,7 @@ class FakeElement {
 	private readonly listeners = new Map<string, EventListener[]>();
 	parentElement: FakeElement | null = null;
 	isConnected = true;
+	shown = true;
 	ownerDocument!: FakeDocument;
 
 	constructor(...classNames: string[]) {
@@ -83,6 +84,10 @@ class FakeElement {
 			current = current.parentElement;
 		}
 		return false;
+	}
+
+	isShown(): boolean {
+		return this.isConnected && this.shown;
 	}
 
 	querySelector<T>(selector: string): T | null {
@@ -216,7 +221,7 @@ interface FocusFixture {
 function createFixture(): FocusFixture {
 	const document = new FakeDocument();
 	const root = new FakeElement("workspace-split", "mod-root");
-	root.ownerDocument = document;
+	document.body.append(root);
 	const leftBranch = new FakeElement("workspace-split");
 	const rightBranch = new FakeElement("workspace-split");
 	const leftGroup = new FakeElement("workspace-tabs");
@@ -244,14 +249,17 @@ function createFixture(): FocusFixture {
 	const rightLeaf = createLeaf(rootSplit, "right", rightGroup);
 	let mostRecentLeaf: WorkspaceLeaf | null = leftLeaf;
 	const frameWindow = new FakeAnimationFrameWindow();
+	const rightSplit = {
+		collapsed: false,
+		toggle: () => {
+			rightSplit.collapsed = !rightSplit.collapsed;
+			rightToggleCount += 1;
+		},
+	};
 	const app = {
 		workspace: {
 			rootSplit,
-			rightSplit: {
-				toggle: () => {
-					rightToggleCount += 1;
-				},
-			},
+			rightSplit,
 			containerEl: { win: frameWindow },
 			getMostRecentLeaf: () => mostRecentLeaf,
 			iterateRootLeaves: (
@@ -433,6 +441,44 @@ test("focus controller adds one native-positioned proxy without moving the toggl
 		fixture.rightHeader.querySelector(".sidebar-toggle-button.mod-right"),
 		fixture.nativeRightToggle
 	);
+});
+
+test("focus controller follows right sidebar collapse state during transitions", () => {
+	const fixture = createFixture();
+	const rightSidebar = new FakeElement(
+		"workspace-split",
+		"mod-right-split"
+	);
+	const sidebarGroup = new FakeElement(
+		"workspace-tabs",
+		"mod-top-right-space"
+	);
+	fixture.document.body.append(rightSidebar);
+	rightSidebar.append(sidebarGroup);
+
+	fixture.controller.setEnabled(true);
+	fixture.frameWindow.flush();
+
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), false);
+	assert.equal(hasClass(sidebarGroup, "mod-top-right-space"), true);
+
+	const proxy = fixture.leftHeader.querySelector<FakeElement>(
+		".lite-tabs-sidebar-toggle-proxy"
+	);
+	assert.ok(proxy);
+	proxy.dispatchClick();
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), true);
+	assert.equal(fixture.frameWindow.pendingCount, 1);
+	fixture.frameWindow.flush();
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), true);
+
+	sidebarGroup.shown = false;
+	proxy.dispatchKeyDown(" ");
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), false);
+	assert.equal(fixture.frameWindow.pendingCount, 1);
+	fixture.frameWindow.flush();
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), false);
+	assert.equal(hasClass(sidebarGroup, "mod-top-right-space"), true);
 });
 
 test("focus controller recreates its proxy after the tab chrome rebuilds", () => {
