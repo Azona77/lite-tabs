@@ -1,4 +1,4 @@
-import type { App, WorkspaceLeaf } from "obsidian";
+import { setIcon, type App, type WorkspaceLeaf } from "obsidian";
 import { getFocusPathDiff } from "./focus-logic";
 import {
 	getMostRecentMainLeaf,
@@ -11,7 +11,8 @@ const BODY_CLASS = "lite-tabs-single-pane";
 const PATH_CLASS = "lite-tabs-focus-path";
 const TARGET_CLASS = "lite-tabs-focus-target";
 const RIGHT_TOGGLE_SELECTOR = ".sidebar-toggle-button.mod-right";
-const RIGHT_TOGGLE_CLONE_CLASS = "lite-tabs-sidebar-toggle-clone";
+const RIGHT_TOGGLE_PROXY_CLASS = "lite-tabs-sidebar-toggle-proxy";
+const TOP_RIGHT_SPACE_CLASS = "mod-top-right-space";
 
 export class WorkspaceFocusController {
 	private enabled = false;
@@ -19,7 +20,9 @@ export class WorkspaceFocusController {
 	private lastMainLeaf: WorkspaceLeaf | null = null;
 	private projection: WorkspaceFocusProjection | null = null;
 	private markedPath = new Set<HTMLElement>();
-	private rightSidebarToggleClone: HTMLElement | null = null;
+	private rightSidebarToggleProxy: HTMLElement | null = null;
+	private topRightSpaceTarget: HTMLElement | null = null;
+	private addedTopRightSpace = false;
 
 	constructor(
 		private app: App,
@@ -146,47 +149,91 @@ export class WorkspaceFocusController {
 	}
 
 	private syncRightSidebarToggle(next: WorkspaceFocusProjection): void {
-		const nativeToggle = Array.from(
+		const hasNativeToggle = Array.from(
 			next.headerEl.querySelectorAll<HTMLElement>(RIGHT_TOGGLE_SELECTOR)
-		).find(
-			(button) =>
-				!button.classList.contains(RIGHT_TOGGLE_CLONE_CLASS)
+		).some(
+			(toggle) =>
+				!toggle.classList.contains(RIGHT_TOGGLE_PROXY_CLASS)
 		);
-		if (nativeToggle) {
-			this.detachRightSidebarToggle();
+		if (hasNativeToggle) {
+			this.clearRightSidebarToggle(
+				this.topRightSpaceTarget === next.groupEl
+			);
+			return;
+		}
+		if (
+			this.rightSidebarToggleProxy &&
+			!this.rightSidebarToggleProxy.isConnected
+		) {
+			this.clearRightSidebarToggle();
+		}
+		if (
+			this.rightSidebarToggleProxy?.parentElement === next.headerEl &&
+			this.topRightSpaceTarget === next.groupEl
+		) {
+			this.ensureTopRightSpace(next.groupEl);
 			return;
 		}
 
-		let clone = this.rightSidebarToggleClone;
-		if (!clone) {
-			const source = Array.from(
-				next.rootEl.querySelectorAll<HTMLElement>(RIGHT_TOGGLE_SELECTOR)
-			).find(
-				(button) =>
-					!button.classList.contains(RIGHT_TOGGLE_CLONE_CLASS)
+		this.clearTopRightSpace();
+		const proxy =
+			this.rightSidebarToggleProxy ??
+			this.createRightSidebarToggle(next.document);
+		if (proxy.parentElement !== next.headerEl) {
+			next.headerEl.appendChild(proxy);
+		}
+		this.ensureTopRightSpace(next.groupEl);
+	}
+
+	private createRightSidebarToggle(document: Document): HTMLElement {
+		const proxy = document.createElement("div");
+		proxy.classList.add("sidebar-toggle-button");
+		proxy.classList.add("mod-right");
+		proxy.classList.add(RIGHT_TOGGLE_PROXY_CLASS);
+		proxy.setAttribute("aria-label", "Toggle right sidebar");
+		proxy.setAttribute("role", "button");
+		proxy.setAttribute("tabindex", "0");
+		proxy.setAttribute("title", "Toggle right sidebar");
+		const button = document.createElement("div");
+		button.classList.add("clickable-icon");
+		setIcon(button, "sidebar-toggle-button-icon");
+		proxy.addEventListener("click", () => {
+			this.app.workspace.rightSplit.toggle();
+		});
+		proxy.addEventListener("keydown", (event) => {
+			if (event.key !== "Enter" && event.key !== " ") return;
+			event.preventDefault();
+			this.app.workspace.rightSplit.toggle();
+		});
+		proxy.appendChild(button);
+		this.rightSidebarToggleProxy = proxy;
+		return proxy;
+	}
+
+	private ensureTopRightSpace(groupEl: HTMLElement): void {
+		if (this.topRightSpaceTarget !== groupEl) {
+			this.clearTopRightSpace();
+			this.topRightSpaceTarget = groupEl;
+			this.addedTopRightSpace = !groupEl.classList.contains(
+				TOP_RIGHT_SPACE_CLASS
 			);
-			if (!source) return;
-			clone = source.cloneNode(true) as HTMLElement;
-			clone.classList.add(RIGHT_TOGGLE_CLONE_CLASS);
-			clone.removeAttribute("id");
-			clone.addEventListener("click", (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				this.app.workspace.rightSplit.toggle();
-			});
-			this.rightSidebarToggleClone = clone;
 		}
-		if (clone.parentElement !== next.headerEl) {
-			next.headerEl.appendChild(clone);
+		if (this.addedTopRightSpace) {
+			groupEl.classList.add(TOP_RIGHT_SPACE_CLASS);
 		}
 	}
 
-	private clearRightSidebarToggle(): void {
-		this.detachRightSidebarToggle();
-		this.rightSidebarToggleClone = null;
+	private clearTopRightSpace(preserve = false): void {
+		if (this.addedTopRightSpace && !preserve) {
+			this.topRightSpaceTarget?.classList.remove(TOP_RIGHT_SPACE_CLASS);
+		}
+		this.topRightSpaceTarget = null;
+		this.addedTopRightSpace = false;
 	}
 
-	private detachRightSidebarToggle(): void {
-		this.rightSidebarToggleClone?.remove();
+	private clearRightSidebarToggle(preserveTopRightSpace = false): void {
+		this.rightSidebarToggleProxy?.remove();
+		this.rightSidebarToggleProxy = null;
+		this.clearTopRightSpace(preserveTopRightSpace);
 	}
 }

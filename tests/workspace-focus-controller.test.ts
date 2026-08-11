@@ -33,6 +33,7 @@ class FakeClassList {
 class FakeElement {
 	readonly classList: FakeClassList;
 	readonly children: FakeElement[] = [];
+	readonly attributes = new Map<string, string>();
 	private readonly listeners = new Map<string, EventListener[]>();
 	parentElement: FakeElement | null = null;
 	isConnected = true;
@@ -99,21 +100,23 @@ class FakeElement {
 		return matches as T[];
 	}
 
-	cloneNode(deep = false): FakeElement {
-		const clone = new FakeElement(...this.classList.values);
-		if (deep) {
-			for (const child of this.children) clone.append(child.cloneNode(true));
-		}
-		return clone;
-	}
-
 	addEventListener(type: string, listener: EventListener): void {
 		const listeners = this.listeners.get(type) ?? [];
 		listeners.push(listener);
 		this.listeners.set(type, listeners);
 	}
 
-	removeAttribute(_name: string): void {}
+	setAttribute(name: string, value: string): void {
+		this.attributes.set(name, value);
+	}
+
+	getAttribute(name: string): string | null {
+		return this.attributes.get(name) ?? null;
+	}
+
+	removeAttribute(name: string): void {
+		this.attributes.delete(name);
+	}
 
 	remove(): void {
 		if (!this.parentElement) return;
@@ -132,10 +135,30 @@ class FakeElement {
 			listener(event);
 		}
 	}
+
+	dispatchKeyDown(key: string): void {
+		const event = {
+			key,
+			preventDefault: () => undefined,
+		} as unknown as Event;
+		for (const listener of this.listeners.get("keydown") ?? []) {
+			listener(event);
+		}
+	}
 }
 
 class FakeDocument {
-	readonly body = new FakeElement();
+	readonly body: FakeElement;
+
+	constructor() {
+		this.body = this.createElement("body");
+	}
+
+	createElement(_tagName: string): FakeElement {
+		const element = new FakeElement();
+		element.ownerDocument = this;
+		return element;
+	}
 }
 
 class FakeAnimationFrameWindow {
@@ -179,6 +202,7 @@ interface FocusFixture {
 	rightBranch: FakeElement;
 	rightGroup: FakeElement;
 	rightHeader: FakeElement;
+	nativeRightToggle: FakeElement;
 	leftLeaf: WorkspaceLeaf;
 	rightLeaf: WorkspaceLeaf;
 	getRightToggleCount(): number;
@@ -192,13 +216,17 @@ function createFixture(): FocusFixture {
 	const leftBranch = new FakeElement("workspace-split");
 	const rightBranch = new FakeElement("workspace-split");
 	const leftGroup = new FakeElement("workspace-tabs");
-	const rightGroup = new FakeElement("workspace-tabs");
+	const rightGroup = new FakeElement("workspace-tabs", "mod-top-right-space");
 	const leftHeader = new FakeElement("workspace-tab-header-container");
 	const rightHeader = new FakeElement("workspace-tab-header-container");
+	let rightToggleCount = 0;
 	const nativeRightToggle = new FakeElement(
 		"sidebar-toggle-button",
 		"mod-right"
 	);
+	nativeRightToggle.addEventListener("click", () => {
+		rightToggleCount += 1;
+	});
 	root.append(leftBranch);
 	root.append(rightBranch);
 	leftBranch.append(leftGroup);
@@ -211,7 +239,6 @@ function createFixture(): FocusFixture {
 	const leftLeaf = createLeaf(rootSplit, "left", leftGroup);
 	const rightLeaf = createLeaf(rootSplit, "right", rightGroup);
 	let mostRecentLeaf: WorkspaceLeaf | null = leftLeaf;
-	let rightToggleCount = 0;
 	const frameWindow = new FakeAnimationFrameWindow();
 	const app = {
 		workspace: {
@@ -243,6 +270,7 @@ function createFixture(): FocusFixture {
 		rightBranch,
 		rightGroup,
 		rightHeader,
+		nativeRightToggle,
 		leftLeaf,
 		rightLeaf,
 		getRightToggleCount: () => rightToggleCount,
@@ -333,41 +361,137 @@ test("focus controller switches only the changed path", () => {
 	);
 });
 
-test("focus controller keeps one right-sidebar toggle in the visible group", () => {
+test("focus controller adds one native-positioned proxy without moving the toggle", () => {
 	const fixture = createFixture();
 	fixture.controller.setEnabled(true);
 	fixture.frameWindow.flush();
-	const clone = fixture.leftHeader.querySelector<FakeElement>(
-		".lite-tabs-sidebar-toggle-clone"
+	const proxy = fixture.leftHeader.querySelector<FakeElement>(
+		".lite-tabs-sidebar-toggle-proxy"
 	);
-	assert.ok(clone);
+	assert.ok(proxy);
+	assert.equal(proxy.parentElement, fixture.leftHeader);
+	assert.equal(hasClass(proxy, "sidebar-toggle-button"), true);
+	assert.equal(hasClass(proxy, "mod-right"), true);
 	assert.equal(
 		fixture.root.querySelectorAll(".sidebar-toggle-button.mod-right").length,
 		2
 	);
-	clone.dispatchClick();
+	assert.equal(
+		fixture.rightHeader.querySelector(".sidebar-toggle-button.mod-right"),
+		fixture.nativeRightToggle
+	);
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), true);
+
+	const button = proxy.querySelector<FakeElement>(".clickable-icon");
+	assert.ok(button);
+	assert.equal(proxy.getAttribute("role"), "button");
+	assert.equal(proxy.getAttribute("tabindex"), "0");
+	assert.equal(
+		proxy.getAttribute("aria-label"),
+		"Toggle right sidebar"
+	);
+	assert.equal(proxy.getAttribute("title"), "Toggle right sidebar");
+	assert.ok(button.querySelector(".sidebar-toggle-icon-inner"));
+	proxy.dispatchClick();
 	assert.equal(fixture.getRightToggleCount(), 1);
+	proxy.dispatchKeyDown(" ");
+	assert.equal(fixture.getRightToggleCount(), 2);
+	fixture.controller.handleLayoutChange();
+	fixture.frameWindow.flush();
+	assert.equal(
+		fixture.leftHeader.querySelectorAll(
+			".lite-tabs-sidebar-toggle-proxy"
+		).length,
+		1
+	);
 
 	fixture.setMostRecentLeaf(fixture.rightLeaf);
 	fixture.controller.handleActiveLeafChange(fixture.rightLeaf);
 	fixture.frameWindow.flush();
 	assert.equal(
-		fixture.leftHeader.querySelector(".lite-tabs-sidebar-toggle-clone"),
+		fixture.leftHeader.querySelector(".lite-tabs-sidebar-toggle-proxy"),
 		null
 	);
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), false);
 	assert.equal(
-		fixture.rightHeader.querySelectorAll(".sidebar-toggle-button.mod-right")
-			.length,
-		1
+		fixture.rightHeader.querySelector(".sidebar-toggle-button.mod-right"),
+		fixture.nativeRightToggle
 	);
+	assert.equal(hasClass(fixture.rightGroup, "mod-top-right-space"), true);
 
 	fixture.setMostRecentLeaf(fixture.leftLeaf);
 	fixture.controller.handleActiveLeafChange(fixture.leftLeaf);
 	fixture.frameWindow.flush();
-	assert.equal(
-		fixture.leftHeader.querySelector(".lite-tabs-sidebar-toggle-clone"),
-		clone
+	assert.ok(
+		fixture.leftHeader.querySelector(".lite-tabs-sidebar-toggle-proxy")
 	);
+	assert.equal(
+		fixture.rightHeader.querySelector(".sidebar-toggle-button.mod-right"),
+		fixture.nativeRightToggle
+	);
+});
+
+test("focus controller recreates its proxy after the tab chrome rebuilds", () => {
+	const fixture = createFixture();
+	fixture.controller.setEnabled(true);
+	fixture.frameWindow.flush();
+	const staleProxy = fixture.leftHeader.querySelector<FakeElement>(
+		".lite-tabs-sidebar-toggle-proxy"
+	);
+	assert.ok(staleProxy);
+
+	staleProxy.remove();
+	fixture.controller.handleLayoutChange();
+	fixture.frameWindow.flush();
+
+	const replacement = fixture.leftHeader.querySelector<FakeElement>(
+		".lite-tabs-sidebar-toggle-proxy"
+	);
+	assert.ok(replacement);
+	assert.notEqual(replacement, staleProxy);
+	assert.equal(
+		fixture.root.querySelectorAll(".sidebar-toggle-button.mod-right").length,
+		2
+	);
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), true);
+
+	fixture.controller.setEnabled(false);
+	assert.equal(
+		fixture.leftHeader.querySelector(".lite-tabs-sidebar-toggle-proxy"),
+		null
+	);
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), false);
+	assert.equal(
+		fixture.rightHeader.querySelector(".sidebar-toggle-button.mod-right"),
+		fixture.nativeRightToggle
+	);
+});
+
+test("focus controller yields its slot when a native toggle appears", () => {
+	const fixture = createFixture();
+	fixture.controller.setEnabled(true);
+	fixture.frameWindow.flush();
+	assert.ok(
+		fixture.leftHeader.querySelector(".lite-tabs-sidebar-toggle-proxy")
+	);
+
+	const nativeToggle = new FakeElement("sidebar-toggle-button", "mod-right");
+	fixture.leftHeader.append(nativeToggle);
+	fixture.controller.handleLayoutChange();
+	fixture.frameWindow.flush();
+
+	assert.equal(
+		fixture.leftHeader.querySelector(".lite-tabs-sidebar-toggle-proxy"),
+		null
+	);
+	assert.equal(
+		fixture.leftHeader.querySelector(".sidebar-toggle-button.mod-right"),
+		nativeToggle
+	);
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), true);
+
+	fixture.controller.setEnabled(false);
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), true);
 });
 
 test("focus controller fails open when the workspace projection disappears", () => {
@@ -420,4 +544,10 @@ test("disabling and disposing cancel work and remove all focus classes", () => {
 		fixture.root.querySelectorAll(".sidebar-toggle-button.mod-right").length,
 		1
 	);
+	assert.equal(
+		fixture.rightHeader.querySelector(".sidebar-toggle-button.mod-right"),
+		fixture.nativeRightToggle
+	);
+	assert.equal(hasClass(fixture.leftGroup, "mod-top-right-space"), false);
+	assert.equal(hasClass(fixture.rightGroup, "mod-top-right-space"), true);
 });

@@ -41,7 +41,6 @@ export interface WorkspaceFocusProjection {
 	groupEl: HTMLElement;
 	headerEl: HTMLElement;
 	pathEls: HTMLElement[];
-	rootEl: HTMLElement;
 }
 
 // Keep Obsidian runtime shape checks in this adapter so workspace internals
@@ -121,7 +120,6 @@ export function getWorkspaceFocusProjection(
 		groupEl,
 		headerEl,
 		pathEls,
-		rootEl,
 	};
 }
 
