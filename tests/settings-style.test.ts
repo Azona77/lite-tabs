@@ -10,6 +10,7 @@ import {
 
 const TEST_SETTINGS: LiteTabsSettings = {
 	hideNativeTabs: false,
+	singlePaneMode: false,
 	toolbarPosition: "floating",
 	layoutStyle: "list",
 	displayOrder: "workspace",

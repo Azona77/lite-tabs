@@ -1,4 +1,4 @@
-import { App, View, WorkspaceLeaf } from "obsidian";
+import { View, type App, type WorkspaceLeaf } from "obsidian";
 import { getRelativeInsertIndex } from "./tab-logic";
 
 export type LeafMovePosition = "before" | "after";
@@ -13,6 +13,10 @@ interface RuntimeLeaf {
 	id?: string;
 	parent?: unknown;
 	setDimension?: (dimension: number | null) => void;
+}
+
+interface RuntimeWorkspaceItem {
+	containerEl?: HTMLElement;
 }
 
 interface RuntimeTabGroup {
@@ -32,6 +36,14 @@ interface LeafMoveContext {
 	targetIndex: number;
 }
 
+export interface WorkspaceFocusProjection {
+	document: Document;
+	groupEl: HTMLElement;
+	headerEl: HTMLElement;
+	pathEls: HTMLElement[];
+	rootEl: HTMLElement;
+}
+
 // Keep Obsidian runtime shape checks in this adapter so workspace internals
 // do not leak into rendering or tab model code.
 export function getLeafId(leaf: WorkspaceLeaf): string {
@@ -46,6 +58,71 @@ export function getActiveTabId(app: App): string | null {
 	const activeLeaf = getActiveLeaf(app);
 	if (!activeLeaf) return null;
 	return getLeafId(activeLeaf) || null;
+}
+
+export function isMainWorkspaceLeaf(
+	app: App,
+	leaf: WorkspaceLeaf,
+	excludedViewType?: string
+): boolean {
+	return (
+		leaf.getRoot() === app.workspace.rootSplit &&
+		leaf.getViewState().type !== excludedViewType
+	);
+}
+
+export function getMostRecentMainLeaf(
+	app: App,
+	excludedViewType?: string
+): WorkspaceLeaf | null {
+	const recent = app.workspace.getMostRecentLeaf(app.workspace.rootSplit);
+	if (recent && isMainWorkspaceLeaf(app, recent, excludedViewType)) {
+		return recent;
+	}
+
+	let fallback: WorkspaceLeaf | null = null;
+	forEachMainLeaf(app, (leaf) => {
+		if (fallback || !isMainWorkspaceLeaf(app, leaf, excludedViewType)) return;
+		fallback = leaf;
+	});
+	return fallback;
+}
+
+export function getWorkspaceFocusProjection(
+	app: App,
+	leaf: WorkspaceLeaf,
+	excludedViewType?: string
+): WorkspaceFocusProjection | null {
+	if (!isMainWorkspaceLeaf(app, leaf, excludedViewType)) return null;
+	const parent = getRuntimeParent(leaf);
+	if (!parent) return null;
+	const groupEl = asRuntimeWorkspaceItem(parent).containerEl;
+	if (!groupEl || !groupEl.isConnected) return null;
+	const headerEl = groupEl.querySelector<HTMLElement>(
+		":scope > .workspace-tab-header-container"
+	);
+	if (!headerEl) return null;
+	const rootEl = groupEl.closest<HTMLElement>(".workspace-split.mod-root");
+	if (!rootEl || !rootEl.contains(groupEl)) return null;
+
+	const pathEls: HTMLElement[] = [];
+	let current: HTMLElement | null = groupEl.parentElement;
+	while (current) {
+		if (current.matches(".workspace-split")) {
+			pathEls.push(current);
+		}
+		if (current === rootEl) break;
+		current = current.parentElement;
+	}
+	if (pathEls[pathEls.length - 1] !== rootEl) return null;
+
+	return {
+		document: rootEl.ownerDocument,
+		groupEl,
+		headerEl,
+		pathEls,
+		rootEl,
+	};
 }
 
 export function forEachMainLeaf(
@@ -162,6 +239,10 @@ function getMainLeafById(app: App, id: string): WorkspaceLeaf | null {
 
 function asRuntimeLeaf(leaf: RuntimeLeaf): RuntimeLeaf {
 	return leaf;
+}
+
+function asRuntimeWorkspaceItem(item: unknown): RuntimeWorkspaceItem {
+	return item as RuntimeWorkspaceItem;
 }
 
 function getRuntimeParent(leaf: WorkspaceLeaf): RuntimeTabGroup | null {
